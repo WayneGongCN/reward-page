@@ -1,17 +1,17 @@
 {
   "meta": {
     "title": "Wayne 的个人赞赏页",
-    "description": "如果我的分享曾为你带来帮助，可以在这里请我喝杯咖啡。",
+    "description": "感谢你的支持，让创作与分享继续发生。",
     "canonicalUrl": "https://reward-page.example.com/",
-    "shareImage": "/assets/share-card.svg"
+    "shareImage": "/assets/reward-codes-social-card.png"
   },
   "profile": {
     "avatar": "/assets/avatar.svg",
     "name": "Wayne",
-    "headline": "感谢你的认可与支持",
+    "headline": "前端开发者 · 长期主义创作者",
     "intro": [
-      "如果我的文章、项目或分享曾经帮助到你，欢迎通过下方任一方式表达支持。",
-      "每一份赞赏都会成为我继续创作和分享的动力。"
+      "你好，我是 Wayne。我喜欢把工作与生活中值得记录的经验整理成文章、工具和开源项目。",
+      "如果这些内容曾给你带来一点帮助，欢迎通过下方任一方式支持我。每一份心意都会被认真珍藏。"
     ]
   },
   "ui": {
@@ -27,23 +27,23 @@
     {
       "id": "wechat",
       "name": "微信赞赏",
-      "qrImage": "/assets/qr-wechat-demo.svg",
-      "alt": "微信赞赏示例二维码，不可用于支付",
-      "description": "示例二维码 · 上线前请替换"
+      "qrImage": "/assets/wechat-reward-code.jpg",
+      "alt": "Wayne 的微信赞赏码",
+      "description": "打开微信扫一扫"
     },
     {
       "id": "alipay",
       "name": "支付宝",
-      "qrImage": "/assets/qr-alipay-demo.svg",
-      "alt": "支付宝赞赏示例二维码，不可用于支付",
-      "description": "示例二维码 · 上线前请替换"
+      "qrImage": "/assets/alipay-reward-code.jpg",
+      "alt": "Wayne 的支付宝收款码",
+      "description": "打开支付宝扫一扫"
     },
     {
       "id": "buymeacoffee",
       "name": "Buy Me a Coffee",
-      "qrImage": "/assets/qr-buymeacoffee-demo.svg",
-      "alt": "Buy Me a Coffee 示例二维码，不可用于支付",
-      "description": "Demo code · Replace before launch"
+      "qrImage": "/assets/buy-me-a-coffee-reward-code.png",
+      "alt": "Wayne 的 Buy Me a Coffee 二维码",
+      "description": "Scan to buy me a coffee"
     }
   ]
 }
