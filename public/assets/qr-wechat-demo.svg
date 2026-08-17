@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">微信赞赏示例二维码</title>
+  <desc id="desc">不可用于支付的绿色二维码占位图</desc>
+  <rect width="640" height="640" rx="38" fill="#fff"/>
+  <g fill="#151515">
+    <path d="M64 64h168v168H64zm28 28v112h112V92zM408 64h168v168H408zm28 28v112h112V92zM64 408h168v168H64zm28 28v112h112V436z"/>
+    <path d="M116 116h64v64h-64zm344 0h64v64h-64zM116 460h64v64h-64zM276 64h44v44h-44zm56 56h44v44h-44zm-56 56h44v44h-44zm56 112h44v44h-44zm-56 56h44v44h-44zm112-68h44v44h-44zm56 56h44v44h-44zm56-56h44v44h-44zm-112 112h44v44h-44zm56 56h44v44h-44zm56-56h44v44h-44zm-224 56h44v44h-44zm56 56h44v44h-44zm56 56h44v44h-44zm112 0h44v44h-44z"/>
+  </g>
+  <rect x="202" y="266" width="236" height="108" rx="28" fill="#07C160"/>
+  <text x="320" y="312" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,sans-serif" font-size="30" font-weight="700" text-anchor="middle">示例 · DEMO</text>
+  <text x="320" y="348" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,sans-serif" font-size="22" font-weight="500" text-anchor="middle">不可用于支付</text>
+</svg>

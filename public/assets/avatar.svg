@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">示例头像</title>
+  <desc id="desc">蓝紫渐变背景上的字母 W</desc>
+  <defs>
+    <linearGradient id="gradient" x1="24" y1="18" x2="218" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A84FF"/>
+      <stop offset="1" stop-color="#5E5CE6"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" rx="56" fill="url(#gradient)"/>
+  <circle cx="190" cy="48" r="72" fill="#fff" opacity=".12"/>
+  <text x="120" y="157" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,sans-serif" font-size="110" font-weight="650" text-anchor="middle">W</text>
+</svg>

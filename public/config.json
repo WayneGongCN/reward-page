@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "title": "Wayne 的个人赞赏页",
+    "description": "如果我的分享曾为你带来帮助，可以在这里请我喝杯咖啡。",
+    "canonicalUrl": "https://reward-page.example.com/",
+    "shareImage": "/assets/share-card.svg"
+  },
+  "profile": {
+    "avatar": "/assets/avatar.svg",
+    "name": "Wayne",
+    "headline": "感谢你的认可与支持",
+    "intro": [
+      "如果我的文章、项目或分享曾经帮助到你，欢迎通过下方任一方式表达支持。",
+      "每一份赞赏都会成为我继续创作和分享的动力。"
+    ]
+  },
+  "ui": {
+    "channelsTitle": "选择赞赏方式",
+    "configError": "暂时无法加载赞赏信息，请稍后再试。",
+    "noChannels": "当前链接没有可展示的赞赏方式。",
+    "imageError": "二维码暂时无法显示",
+    "privacyNotice": "本站使用 Google Analytics 收集匿名访问数据。",
+    "privacyLinkLabel": "了解 Google 隐私政策",
+    "privacyPolicyUrl": "https://policies.google.com/privacy"
+  },
+  "channels": [
+    {
+      "id": "wechat",
+      "name": "微信赞赏",
+      "qrImage": "/assets/qr-wechat-demo.svg",
+      "alt": "微信赞赏示例二维码，不可用于支付",
+      "description": "示例二维码 · 上线前请替换"
+    },
+    {
+      "id": "alipay",
+      "name": "支付宝",
+      "qrImage": "/assets/qr-alipay-demo.svg",
+      "alt": "支付宝赞赏示例二维码，不可用于支付",
+      "description": "示例二维码 · 上线前请替换"
+    },
+    {
+      "id": "buymeacoffee",
+      "name": "Buy Me a Coffee",
+      "qrImage": "/assets/qr-buymeacoffee-demo.svg",
+      "alt": "Buy Me a Coffee 示例二维码，不可用于支付",
+      "description": "Demo code · Replace before launch"
+    }
+  ]
+}
