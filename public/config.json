@@ -6,12 +6,11 @@
     "shareImage": "/assets/reward-codes-social-card.png"
   },
   "profile": {
-    "avatar": "/assets/avatar.svg",
+    "avatar": "",
     "name": "Wayne",
-    "headline": "前端开发者 · 长期主义创作者",
+    "headline": "",
     "intro": [
-      "你好，我是 Wayne。我喜欢把工作与生活中值得记录的经验整理成文章、工具和开源项目。",
-      "如果这些内容曾给你带来一点帮助，欢迎通过下方任一方式支持我。每一份心意都会被认真珍藏。"
+      "你好，我是 Wayne，欢迎通过下方任一方式支持我。每一份心意都会被认真珍藏。"
     ]
   },
   "ui": {
