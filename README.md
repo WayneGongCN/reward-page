@@ -10,7 +10,7 @@
 - 支持按 URL 参数隐藏简介或筛选赞赏渠道。
 - iframe 内容高度变化时通过 `postMessage` 通知父页面。
 - 可选 GA4 匿名访问统计，仅在 Vercel Production 发布时启用。
-- GitHub Actions 质量门禁、Vercel Preview 和 Tag 生产发布。
+- GitHub Actions 质量门禁与 Vercel Git 自动部署。
 
 ## 本地开发
 
@@ -115,38 +115,32 @@ VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 VITE_TELEMETRY_ENABLED=false
 ```
 
-本地与 Preview 固定关闭遥测。Production 工作流显式设置 `VITE_TELEMETRY_ENABLED=true`，并从 Vercel Production 环境读取 `VITE_GA_MEASUREMENT_ID`。`VITE_*` 会写入公开构建产物，不能存放秘密。
+本地与 Preview 默认关闭遥测。Vercel Production 环境设置 `VITE_TELEMETRY_ENABLED=true`，并从同一环境读取 `VITE_GA_MEASUREMENT_ID`。`VITE_*` 会写入公开构建产物，不能存放秘密。
 
 ## Vercel 部署
 
-先创建 Vercel 项目，并通过 CLI 在本地关联一次：
+Vercel 项目名称为 `reward-page`，并连接 GitHub 仓库 `WayneGongCN/reward-page`。本地首次开发时可通过 CLI 关联：
 
 ```bash
-pnpm dlx vercel link
+pnpm dlx vercel link --project reward-page
 ```
 
-将 `.vercel/project.json` 中的 `orgId`、`projectId` 以及 Vercel Access Token 配置为 GitHub Repository Secrets：
+部署由 Vercel Git 集成完成，不需要在 GitHub 配置 Vercel Token 或项目 ID。请在 Vercel 项目的 Production 环境配置：
 
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
+- `VITE_TELEMETRY_ENABLED=true`
+- `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX`
 
-在 Vercel 项目的 Production 环境配置 `VITE_GA_MEASUREMENT_ID`。Preview 环境无需配置 GA。
+Preview 与 Development 环境不要设置 `VITE_GA_MEASUREMENT_ID`；`VITE_TELEMETRY_ENABLED` 未设置或不为 `true` 时不会加载 GA。
 
 发布规则：
 
-- Pull Request 和 `main` 推送：运行测试、类型检查和构建。
-- `main` 推送：质量门禁通过后创建 Vercel Preview；若尚未配置 Secrets，则安全跳过部署并在任务摘要中说明。
-- 版本 Tag：确认对应提交属于 `main` 后部署 Production，并启用 GA。
+- Pull Request：GitHub Actions 执行测试、类型检查和构建，Vercel 创建 Preview Deployment。
+- 推送 `main`：GitHub Actions 执行质量门禁，Vercel 自动创建 Production Deployment 并更新 `reward.waynegong.cn`。
+- 其他分支推送：Vercel 创建 Preview Deployment。
 
-生产发布示例：
+GitHub Actions 与 Vercel Git 部署彼此独立触发；需要强制“质量门禁通过后才能生产部署”时，应启用 `main` 分支保护并要求“测试、类型检查与构建”检查通过后才能合并。
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-回滚优先在 Vercel Deployments 中选择上一份正常的 Production Deployment。不要移动已经发布的 Tag；需要重新构建旧版本时，在目标提交上创建新的修复版本 Tag。
+回滚优先在 Vercel Deployments 中选择上一份正常的 Production Deployment 并执行 Promote to Production。
 
 ## 安全响应头
 
