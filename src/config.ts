@@ -131,9 +131,7 @@ export function parseAppConfig(value: unknown): AppConfig {
   }
 }
 
-/** 从固定同源地址加载赞赏页配置，喵~ */
-export async function loadAppConfig(fetcher: typeof fetch = fetch): Promise<AppConfig> {
-  const response = await fetcher('/config.json', { cache: 'no-cache' })
-  if (!response.ok) throw new ConfigValidationError('fetch')
-  return parseAppConfig(await response.json())
+/** 读取并校验构建时注入的赞赏页配置，喵~ */
+export function loadAppConfig(value: unknown = __APP_CONFIG__): AppConfig {
+  return parseAppConfig(value)
 }

@@ -1,6 +1,6 @@
 import './styles.css'
 import { initializeAnalytics, trackAnalyticsEvent } from './analytics'
-import { ConfigValidationError, loadAppConfig } from './config'
+import { loadAppConfig } from './config'
 import { setupIframeAutoResize } from './iframe-resize'
 import type { AppConfig, PageOptions, RewardChannel } from './types'
 import { parsePageOptions } from './url-options'
@@ -159,9 +159,9 @@ function renderFatalError(message: string): void {
 }
 
 /** 加载配置并启动页面，任何异常都不会阻断静态错误态，喵~ */
-async function start(): Promise<void> {
+function start(): void {
   try {
-    const config = await loadAppConfig()
+    const config = loadAppConfig()
     syncRuntimeMetadata(config)
     const options = parsePageOptions(window.location.search, config.channels.map((channel) => channel.id))
     try {
@@ -170,11 +170,10 @@ async function start(): Promise<void> {
       trackAnalyticsEvent('reward_config_error', { stage: 'render' })
       renderFatalError(config.ui.configError)
     }
-  } catch (error) {
-    const stage = error instanceof ConfigValidationError && error.code === 'fetch' ? 'fetch' : 'parse'
-    trackAnalyticsEvent('reward_config_error', { stage })
+  } catch {
+    trackAnalyticsEvent('reward_config_error', { stage: 'parse' })
     renderFatalError('暂时无法加载赞赏信息，请稍后再试。')
   }
 }
 
-void start()
+start()

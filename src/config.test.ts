@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ConfigValidationError, isSafeAssetPath, loadAppConfig, parseAppConfig } from './config'
 
 const validConfig = {
@@ -105,19 +105,11 @@ describe('parseAppConfig', () => {
 })
 
 describe('loadAppConfig', () => {
-  it('从固定地址加载并校验配置', async () => {
-    const fetcher = vi.fn(async () => new Response(JSON.stringify(validConfig)))
-    await expect(loadAppConfig(fetcher as typeof fetch)).resolves.toMatchObject({ meta: validConfig.meta })
-    expect(fetcher).toHaveBeenCalledWith('/config.json', { cache: 'no-cache' })
+  it('读取并校验构建时注入的配置', () => {
+    expect(loadAppConfig(validConfig)).toMatchObject({ meta: validConfig.meta })
   })
 
-  it('请求失败时返回稳定错误代码', async () => {
-    const fetcher = vi.fn(async () => new Response('', { status: 503 }))
-    await expect(loadAppConfig(fetcher as typeof fetch)).rejects.toMatchObject({ code: 'fetch' })
-  })
-
-  it('非法 JSON 内容不会被当作配置使用', async () => {
-    const fetcher = vi.fn(async () => new Response('{'))
-    await expect(loadAppConfig(fetcher as typeof fetch)).rejects.toBeInstanceOf(SyntaxError)
+  it('拒绝非法的构建时配置', () => {
+    expect(() => loadAppConfig({})).toThrowError(ConfigValidationError)
   })
 })
