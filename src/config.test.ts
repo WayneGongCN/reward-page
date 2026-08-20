@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { ConfigValidationError, isSafeAssetPath, loadAppConfig, parseAppConfig } from './config'
 
@@ -35,6 +36,11 @@ const validConfig = {
 }
 
 describe('parseAppConfig', () => {
+  it('项目公开配置始终可以通过运行时校验', () => {
+    const publicConfig = JSON.parse(readFileSync(new URL('../public/config.json', import.meta.url), 'utf8'))
+    expect(() => parseAppConfig(publicConfig)).not.toThrow()
+  })
+
   it('解析合法配置并修剪文案空白', () => {
     const config = parseAppConfig({
       ...validConfig,
@@ -46,6 +52,28 @@ describe('parseAppConfig', () => {
       headline: undefined,
       intro: ['你好'],
     })
+  })
+
+  it('将可选文本字段的空值归一化为未配置', () => {
+    const config = parseAppConfig({
+      ...validConfig,
+      profile: { avatar: '', name: '   ', headline: '\t', intro: ['你好'] },
+      channels: [{ ...validConfig.channels[0], description: '' }],
+    })
+    expect(config.profile).toEqual({
+      avatar: undefined,
+      name: undefined,
+      headline: undefined,
+      intro: ['你好'],
+    })
+    expect(config.channels[0]?.description).toBeUndefined()
+  })
+
+  it('仍然拒绝可选文本字段的非字符串值', () => {
+    expect(() => parseAppConfig({
+      ...validConfig,
+      profile: { name: 123 },
+    })).toThrowError(new ConfigValidationError('profile.name'))
   })
 
   it('允许省略个人资料和使用零渠道配置', () => {

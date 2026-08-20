@@ -25,7 +25,7 @@ function readRequiredString(record: Record<string, unknown>, key: string): strin
 function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key]
   if (value === undefined) return undefined
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
+  return typeof value === 'string' ? value.trim() || undefined : undefined
 }
 
 /** 校验静态资源只能使用项目内的同源绝对或相对路径，喵~ */
@@ -64,10 +64,10 @@ function parseProfile(value: unknown): ProfileConfig | undefined {
   const avatar = readOptionalString(value, 'avatar')
   const name = readOptionalString(value, 'name')
   const headline = readOptionalString(value, 'headline')
-  if (value.avatar !== undefined && !avatar) throw new ConfigValidationError('profile.avatar')
+  if (value.avatar !== undefined && typeof value.avatar !== 'string') throw new ConfigValidationError('profile.avatar')
   if (avatar && !isSafeAssetPath(avatar)) throw new ConfigValidationError('profile.avatar')
-  if (value.name !== undefined && !name) throw new ConfigValidationError('profile.name')
-  if (value.headline !== undefined && !headline) throw new ConfigValidationError('profile.headline')
+  if (value.name !== undefined && typeof value.name !== 'string') throw new ConfigValidationError('profile.name')
+  if (value.headline !== undefined && typeof value.headline !== 'string') throw new ConfigValidationError('profile.headline')
 
   let intro: string[] | undefined
   if (value.intro !== undefined) {
@@ -108,7 +108,7 @@ function parseChannel(value: unknown, index: number): RewardChannel {
   if (!id || !name || !qrImage || !alt) throw new ConfigValidationError(`channels.${index}.fields`)
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new ConfigValidationError(`channels.${index}.id`)
   if (!isSafeAssetPath(qrImage)) throw new ConfigValidationError(`channels.${index}.qrImage`)
-  if (value.description !== undefined && !description) {
+  if (value.description !== undefined && typeof value.description !== 'string') {
     throw new ConfigValidationError(`channels.${index}.description`)
   }
   return { id, name, qrImage, alt, description }
