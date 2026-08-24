@@ -116,6 +116,19 @@ describe('trackAnalyticsEvent', () => {
     }])
   })
 
+  it('Base Pay 事件只发送语言和受限结果，不包含付款敏感字段', () => {
+    const { analyticsWindow } = installBrowser()
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true })
+    trackAnalyticsEvent('reward_base_pay_start', { content_language: 'zh-CN' })
+    trackAnalyticsEvent('reward_base_pay_result', { content_language: 'zh-CN', result: 'completed' })
+    const events = readDataLayer(analyticsWindow).slice(-2)
+    expect(events).toEqual([
+      ['event', 'reward_base_pay_start', { content_language: 'zh-CN' }],
+      ['event', 'reward_base_pay_result', { content_language: 'zh-CN', result: 'completed' }],
+    ])
+    expect(JSON.stringify(events)).not.toMatch(/amount|address|recipient|hash|paymentId|error/i)
+  })
+
   it('未初始化时静默忽略事件', () => {
     const { analyticsWindow } = installBrowser()
     expect(() => trackAnalyticsEvent('reward_config_error', { stage: 'fetch' })).not.toThrow()

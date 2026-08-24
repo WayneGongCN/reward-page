@@ -19,7 +19,13 @@
     {
       "id": "base",
       "qrImage": "/assets/base-reward-code.png",
-      "copyValue": "0xEF787423A25713C0c979d4F5323FB05b2C2b5D38"
+      "copyValue": "0xEF787423A25713C0c979d4F5323FB05b2C2b5D38",
+      "basePay": {
+        "presetAmounts": ["1.00", "3.00", "5.00"],
+        "defaultAmount": "3.00",
+        "customMin": "0.10",
+        "customMax": "100.00"
+      }
     }
   ],
   "locales": {
@@ -53,7 +59,26 @@
         "privacyNotice": "本站使用 Google Analytics 收集匿名访问数据。",
         "privacyLinkLabel": "了解 Google 隐私政策",
         "privacyPolicyUrl": "https://policies.google.com/privacy?hl=zh-CN",
-        "languageSwitcherLabel": "选择页面语言"
+        "languageSwitcherLabel": "选择页面语言",
+        "basePay": {
+          "amountLabel": "选择 USDC 赞赏金额",
+          "customAmountLabel": "自定义金额",
+          "customAmountPlaceholder": "0.10–100.00",
+          "invalidAmount": "请输入 0.10–100.00 之间、最多两位小数的金额。",
+          "preparing": "正在准备 Base Pay…",
+          "payButtonLabel": "使用 Base Pay 赞赏",
+          "awaitingApproval": "请在 Base Pay 弹窗中确认付款。",
+          "confirming": "付款已提交，正在等待链上确认…",
+          "success": "感谢你的 USDC 赞赏，付款已确认。",
+          "cancelled": "付款已取消，你可以重新发起。",
+          "failed": "付款未完成，请重试或使用其他钱包。",
+          "timeout": "付款暂未确认，请勿重复支付；你可以重新检查链上状态。",
+          "paymentIdLabel": "付款 ID",
+          "recheck": "重新检查",
+          "restart": "确认未扣款后重新支付",
+          "fallbackSummary": "使用 Trust Wallet、MetaMask 等其他钱包",
+          "testnetNotice": "当前为 Base Sepolia 测试网，不会转入真实 USDC。"
+        }
       },
       "channels": {
         "wechat": {
@@ -108,7 +133,26 @@
         "privacyNotice": "This site uses Google Analytics to collect anonymous usage data.",
         "privacyLinkLabel": "Learn about Google’s Privacy Policy",
         "privacyPolicyUrl": "https://policies.google.com/privacy?hl=en",
-        "languageSwitcherLabel": "Choose page language"
+        "languageSwitcherLabel": "Choose page language",
+        "basePay": {
+          "amountLabel": "Choose a USDC support amount",
+          "customAmountLabel": "Custom amount",
+          "customAmountPlaceholder": "0.10–100.00",
+          "invalidAmount": "Enter an amount from 0.10 to 100.00 with no more than two decimal places.",
+          "preparing": "Preparing Base Pay…",
+          "payButtonLabel": "Support with Base Pay",
+          "awaitingApproval": "Confirm the payment in the Base Pay popup.",
+          "confirming": "Payment submitted. Waiting for onchain confirmation…",
+          "success": "Thank you for your USDC support. The payment is confirmed.",
+          "cancelled": "Payment cancelled. You can try again.",
+          "failed": "Payment did not complete. Try again or use another wallet.",
+          "timeout": "Payment is not confirmed yet. Do not pay again; recheck its onchain status.",
+          "paymentIdLabel": "Payment ID",
+          "recheck": "Recheck",
+          "restart": "I checked: start a new payment",
+          "fallbackSummary": "Use Trust Wallet, MetaMask, or another wallet",
+          "testnetNotice": "Base Sepolia testnet is active. No real USDC will be transferred."
+        }
       },
       "channels": {
         "wechat": {

@@ -2,6 +2,7 @@ import type { PageMode, SupportedLocale } from './types'
 
 type AnalyticsStorageConsent = 'granted' | 'denied'
 type ConfigErrorStage = 'fetch' | 'parse' | 'render'
+type BasePayAnalyticsResult = 'completed' | 'cancelled' | 'failed' | 'timeout'
 
 interface AnalyticsEventMap {
   reward_page_view: {
@@ -17,6 +18,13 @@ interface AnalyticsEventMap {
   }
   reward_config_error: {
     stage: ConfigErrorStage
+  }
+  reward_base_pay_start: {
+    content_language: SupportedLocale
+  }
+  reward_base_pay_result: {
+    content_language: SupportedLocale
+    result: BasePayAnalyticsResult
   }
 }
 

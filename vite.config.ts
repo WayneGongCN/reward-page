@@ -81,6 +81,7 @@ function configDrivenMetadata(config: AppConfig): Plugin {
         html,
       )
       const preloadLinks = config.channels
+        .filter((channel) => !channel.basePay)
         .map((channel) => `<link rel="preload" as="image" href="${escapeHtml(channel.qrImage)}" />`)
         .join('\n    ')
       return metadataHtml.replace('</head>', `  ${preloadLinks}\n  </head>`)

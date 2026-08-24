@@ -34,6 +34,26 @@ export interface CommentsConfig {
   label: string
 }
 
+export interface BasePayUiConfig {
+  amountLabel: string
+  customAmountLabel: string
+  customAmountPlaceholder: string
+  invalidAmount: string
+  preparing: string
+  payButtonLabel: string
+  awaitingApproval: string
+  confirming: string
+  success: string
+  cancelled: string
+  failed: string
+  timeout: string
+  paymentIdLabel: string
+  recheck: string
+  restart: string
+  fallbackSummary: string
+  testnetNotice: string
+}
+
 export interface UiConfig {
   channelsTitle: string
   configError: string
@@ -54,12 +74,21 @@ export interface UiConfig {
   privacyLinkLabel: string
   privacyPolicyUrl: string
   languageSwitcherLabel: string
+  basePay: BasePayUiConfig
+}
+
+export interface BasePayConfig {
+  presetAmounts: string[]
+  defaultAmount: string
+  customMin: string
+  customMax: string
 }
 
 export interface SharedRewardChannel {
   id: string
   qrImage: string
   copyValue?: string
+  basePay?: BasePayConfig
 }
 
 export interface LocalizedRewardChannel {

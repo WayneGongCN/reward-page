@@ -20,7 +20,7 @@ function readContentSecurityPolicy(): string {
   return globalRule?.headers.find((header) => header.key === 'Content-Security-Policy')?.value ?? ''
 }
 
-describe('评论系统安全配置', () => {
+describe('第三方能力安全配置', () => {
   it('只为 utterances 增加脚本与 iframe 来源，并显式允许其动态样式', () => {
     const policy = readContentSecurityPolicy()
     expect(policy).toContain("script-src 'self' https://www.googletagmanager.com https://utteranc.es")
@@ -33,5 +33,23 @@ describe('评论系统安全配置', () => {
   it('utterances 仅允许生产域名发评论', () => {
     const config = JSON.parse(readFileSync(new URL('../utterances.json', import.meta.url), 'utf8'))
     expect(config).toEqual({ origins: ['https://reward.waynegong.cn'] })
+  })
+
+  it('Base Pay 只增加官方状态查询域名且不放宽连接来源', () => {
+    const policy = readContentSecurityPolicy()
+    const connectSource = policy.split(';').find((directive) => directive.trim().startsWith('connect-src')) ?? ''
+    expect(connectSource).toBe(
+      " connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com https://chain-proxy.wallet.coinbase.com",
+    )
+    expect(connectSource).not.toContain('https://* ')
+    expect(connectSource).not.toContain(' wss:')
+  })
+
+  it('不设置会隔离 Base Pay 弹窗通信的 COOP 响应头', () => {
+    const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
+      headers: HeaderRule[]
+    }
+    const headerNames = config.headers.flatMap((rule) => rule.headers.map((header) => header.key.toLowerCase()))
+    expect(headerNames).not.toContain('cross-origin-opener-policy')
   })
 })

@@ -22,6 +22,25 @@ const validUi = {
   privacyLinkLabel: '隐私政策',
   privacyPolicyUrl: 'https://policies.google.com/privacy',
   languageSwitcherLabel: '选择语言',
+  basePay: {
+    amountLabel: '选择金额',
+    customAmountLabel: '自定义金额',
+    customAmountPlaceholder: '0.10–100.00',
+    invalidAmount: '金额无效',
+    preparing: '正在准备',
+    payButtonLabel: '使用 Base Pay',
+    awaitingApproval: '等待确认',
+    confirming: '链上确认中',
+    success: '成功',
+    cancelled: '已取消',
+    failed: '失败',
+    timeout: '超时',
+    paymentIdLabel: '付款 ID',
+    recheck: '重新检查',
+    restart: '重新支付',
+    fallbackSummary: '使用其他钱包',
+    testnetNotice: '当前为测试网',
+  },
 }
 
 const validConfig = {
@@ -56,12 +75,34 @@ const validConfig = {
     en: {
       meta: { title: 'Reward Page', description: 'Description' },
       profile: { name: 'Wayne', headline: 'Thank you', intro: ['First', 'Second'], avatarAlt: "Wayne's avatar" },
-      ui: { ...validUi, languageSwitcherLabel: 'Choose language' },
+      ui: { ...validUi, basePay: { ...validUi.basePay }, languageSwitcherLabel: 'Choose language' },
       channels: {
         wechat: { name: 'WeChat', alt: 'WeChat QR code', description: 'Scan to support' },
       },
     },
   },
+}
+
+/** 向测试配置加入 Base Pay 渠道及双语文案，喵~ */
+function addBasePayChannel(input: any): void {
+  input.channels.push({
+    id: 'base',
+    qrImage: '/assets/base.svg',
+    copyValue: '0xEF787423A25713C0c979d4F5323FB05b2C2b5D38',
+    basePay: {
+      presetAmounts: ['1.00', '3.00', '5.00'],
+      defaultAmount: '3.00',
+      customMin: '0.10',
+      customMax: '100.00',
+    },
+  })
+  for (const locale of ['zh-CN', 'en']) {
+    input.locales[locale].channels.base = {
+      name: 'USDC · Base',
+      alt: 'Base USDC QR code',
+      description: 'USDC on Base',
+    }
+  }
 }
 
 describe('parseAppConfig', () => {
@@ -233,6 +274,59 @@ describe('parseAppConfig', () => {
     const input: any = structuredClone(validConfig)
     input.channels[0].copyValue = copyValue
     expect(() => parseAppConfig(input)).toThrowError(new ConfigValidationError('channels.0.copyValue'))
+  })
+
+  it('解析 Base Pay 金额配置并统一保留两位小数', () => {
+    const input: any = structuredClone(validConfig)
+    addBasePayChannel(input)
+    input.channels[1].basePay = {
+      presetAmounts: ['1', '3.0', '5.00'],
+      defaultAmount: '3',
+      customMin: '0.1',
+      customMax: '100',
+    }
+
+    expect(parseAppConfig(input).channels[1]?.basePay).toEqual({
+      presetAmounts: ['1.00', '3.00', '5.00'],
+      defaultAmount: '3.00',
+      customMin: '0.10',
+      customMax: '100.00',
+    })
+  })
+
+  it.each([
+    ['缺少收款地址', (channel: any) => { delete channel.copyValue }],
+    ['收款地址格式非法', (channel: any) => { channel.copyValue = '0x1234' }],
+    ['金额包含三位小数', (channel: any) => { channel.basePay.presetAmounts = ['1.001', '3.00'] }],
+    ['预设金额重复', (channel: any) => { channel.basePay.presetAmounts = ['1.00', '1.0'] }],
+    ['预设金额乱序', (channel: any) => { channel.basePay.presetAmounts = ['3.00', '1.00'] }],
+    ['默认金额不在档位中', (channel: any) => { channel.basePay.defaultAmount = '2.00' }],
+    ['预设金额低于下限', (channel: any) => { channel.basePay.customMin = '2.00' }],
+    ['预设金额高于上限', (channel: any) => { channel.basePay.customMax = '4.00' }],
+  ])('拒绝 Base Pay %s', (_name, mutate) => {
+    const input: any = structuredClone(validConfig)
+    addBasePayChannel(input)
+    mutate(input.channels[1])
+    expect(() => parseAppConfig(input)).toThrowError(ConfigValidationError)
+  })
+
+  it('拒绝 Base Pay 双语交互文案缺失', () => {
+    const input: any = structuredClone(validConfig)
+    addBasePayChannel(input)
+    delete input.locales.en.ui.basePay.success
+    expect(() => parseAppConfig(input))
+      .toThrowError(new ConfigValidationError('locales.en.ui.basePay.fields'))
+  })
+
+  it('拒绝同时配置多个 Base Pay 渠道', () => {
+    const input: any = structuredClone(validConfig)
+    addBasePayChannel(input)
+    input.channels.push({ ...structuredClone(input.channels[1]), id: 'base-two' })
+    for (const locale of ['zh-CN', 'en']) {
+      input.locales[locale].channels['base-two'] = structuredClone(input.locales[locale].channels.base)
+    }
+    expect(() => parseAppConfig(input))
+      .toThrowError(new ConfigValidationError('channels.basePay.duplicate'))
   })
 })
 

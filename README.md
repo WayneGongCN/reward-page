@@ -10,6 +10,7 @@
 - 支持完整页面和透明紧凑的 iframe 模式。
 - 支持按 URL 参数隐藏简介或筛选赞赏渠道。
 - 二维码渠道可选展示并复制公开钱包地址。
+- Base 渠道支持 Base Pay 的 USDC 快捷金额、自定义金额和链上确认状态。
 - 基于 GitHub Issues 的公开留言 Tab，首次切换时才加载评论组件。
 - iframe 内容高度变化时通过 `postMessage` 通知父页面。
 - 可选 GA4 匿名访问统计，仅在 Vercel Production 发布时启用。
@@ -64,7 +65,25 @@ Vite 会在启动和构建时校验并注入静态配置，同时为图片地址
 
 ### 虚拟币钱包渠道
 
-生产配置当前已启用 `base` 渠道，用于接收 Base 网络上的 USDC，并展示二维码与可复制公开地址。页面会同时标明资产和网络，付款方必须选择 Base 网络发送 USDC。
+生产配置当前已启用 `base` 渠道，用于接收 Base 网络上的 USDC。该渠道通过可选的 `basePay` 配置启用 Base Pay，`copyValue` 同时作为 Base Pay 收款地址；启用时必须是 `0x` 加 40 位十六进制字符。金额配置示例：
+
+```json
+{
+  "id": "base",
+  "qrImage": "/assets/base-reward-code.png",
+  "copyValue": "0xEF787423A25713C0c979d4F5323FB05b2C2b5D38",
+  "basePay": {
+    "presetAmounts": ["1.00", "3.00", "5.00"],
+    "defaultAmount": "3.00",
+    "customMin": "0.10",
+    "customMax": "100.00"
+  }
+}
+```
+
+金额必须是正数十进制字符串且最多两位小数。预设值必须唯一、严格升序并位于自定义范围内，默认值必须属于预设值。页面内部使用整数美分比较，调用 SDK 时仍传递规范化的十进制字符串。
+
+Base Pay SDK 会在卡片进入视口前约 300px 时按需加载为独立分包。主网默认将原有二维码、完整地址和复制按钮折叠为“使用其他钱包”；SDK 加载失败时自动展开。测试网会显示醒目提示并隐藏这组主网二维码，防止误用真实资产。收款页不连接收款钱包、不保存私钥、不请求付款人身份，也不在站内创建订单。
 
 BTC、USDT 与其他赞赏方式使用相同的二维码渠道模型，不引入链上 SDK 或地址格式判断。真实素材到位后，可在共享渠道末尾追加：
 
@@ -166,6 +185,22 @@ window.addEventListener('message', (event) => {
 
 必须同时校验 `event.origin` 和 `event.source`。页面不接收父窗口消息，也不会通过消息传递配置或个人内容。跨域 iframe 需要由父页面通过 `allow="clipboard-write"` 授权现代剪贴板能力；未授权或浏览器拒绝时，页面会尝试兼容性复制，并保留可手动选择的完整地址。
 
+当前示例未设置 `sandbox`，Base Pay 可以正常打开付款弹窗。宿主若自行添加 `sandbox`，必须至少允许弹窗，例如加入 `allow-popups`；否则浏览器会阻止 Base Pay。不要在赞赏页响应头设置 `Cross-Origin-Opener-Policy: same-origin`，该策略会破坏 Coinbase 弹窗与原页面之间的通信。
+
+## Base Pay 网络配置
+
+公开构建变量只接受以下语义：
+
+```text
+VITE_BASE_PAY_NETWORK=base-sepolia
+```
+
+- 缺省、Development 和 Preview 使用 `base-sepolia`。
+- Vercel Production 必须显式设置为 `base`。
+- 其他值会安全回退到 `base-sepolia`。
+
+该变量会写入公开构建产物，不是秘密。Base Pay 使用 `@base-org/account@2.5.10` 的 `pay()` 与 `getPaymentStatus()`；两处遥测都固定关闭。页面每 1.5 秒校验一次受信任的金额和收款地址，最多 20 次。超时后保留付款 ID 并提示不要重复付款，用户可重新检查，或确认未扣款后开始新支付。
+
 ## Google Analytics 4
 
 实现使用官方 Google Tag，并沿用以下隐私边界：
@@ -175,6 +210,7 @@ window.addEventListener('message', (event) => {
 - 关闭 Google Signals 与广告个性化信号。
 - 不设置用户 ID，不发送二维码内容、简介、完整 URL 或异常原文。
 - 自动发送 `page_view`，并发送 `reward_page_view` 与匿名的 `reward_config_error`；页面浏览事件只附带留言 Tab 是否可用，不包含评论内容、Issue 编号或 GitHub 身份。
+- Base Pay 仅发送 `reward_base_pay_start` 和 `reward_base_pay_result`；参数只包含当前语言及 `completed | cancelled | failed | timeout` 结果，不发送金额、地址、交易标识、异常原文或付款人信息。
 
 环境变量：
 
@@ -197,8 +233,9 @@ pnpm dlx vercel link --project reward-page
 
 - `VITE_TELEMETRY_ENABLED=true`
 - `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX`
+- `VITE_BASE_PAY_NETWORK=base`
 
-Preview 与 Development 环境不要设置 `VITE_GA_MEASUREMENT_ID`；`VITE_TELEMETRY_ENABLED` 未设置或不为 `true` 时不会加载 GA。
+Preview 与 Development 环境不要设置 `VITE_GA_MEASUREMENT_ID`；`VITE_TELEMETRY_ENABLED` 未设置或不为 `true` 时不会加载 GA。Preview 与 Development 的 `VITE_BASE_PAY_NETWORK` 保持 `base-sepolia`，不要复用 Production 的主网值。
 
 发布规则：
 
@@ -212,7 +249,7 @@ GitHub Actions 与 Vercel Git 部署彼此独立触发；需要强制“质量�
 
 ## 安全响应头
 
-`vercel.json` 配置 CSP、Referrer Policy、MIME 嗅探保护和权限限制。CSP 仅为 utterances 增加 `https://utteranc.es` 的脚本与 iframe 来源；由于官方组件会注入样式并动态调整高度，`style-src` 显式允许内联样式。为了允许跨站 iframe，项目不会发送 `X-Frame-Options`，CSP 使用 `frame-ancestors *`；接入方应自行限制允许嵌入赞赏页的页面范围。
+`vercel.json` 配置 CSP、Referrer Policy、MIME 嗅探保护和权限限制。CSP 为 utterances 增加 `https://utteranc.es` 的脚本与 iframe 来源，并只为 Base Pay 状态查询增加 `https://chain-proxy.wallet.coinbase.com`；没有新增连接通配符。由于评论组件会注入样式并动态调整高度，`style-src` 显式允许内联样式。为了允许跨站 iframe，项目不会发送 `X-Frame-Options`，CSP 使用 `frame-ancestors *`；接入方应自行限制允许嵌入赞赏页的页面范围。项目也不会设置 `Cross-Origin-Opener-Policy: same-origin`。
 
 ## License
 

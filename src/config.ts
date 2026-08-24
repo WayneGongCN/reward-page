@@ -1,6 +1,8 @@
 import {
   SUPPORTED_LOCALES,
   type AppConfig,
+  type BasePayConfig,
+  type BasePayUiConfig,
   type CommentsConfig,
   type LocalizedPageContent,
   type LocalizedProfileConfig,
@@ -12,6 +14,7 @@ import {
   type SupportedLocale,
   type UiConfig,
 } from './types'
+import { formatUsdcCents, parseUsdcCents } from './usdc-amount'
 
 export class ConfigValidationError extends Error {
   readonly code: string
@@ -98,6 +101,51 @@ function parseComments(value: unknown): CommentsConfig {
   return { repository, label }
 }
 
+/** 解析并规范化 Base Pay 金额配置，喵~ */
+function parseBasePay(value: unknown, index: number, copyValue: string | undefined): BasePayConfig | undefined {
+  if (value === undefined) return undefined
+  const code = `channels.${index}.basePay`
+  if (!isRecord(value)) throw new ConfigValidationError(code)
+  if (!copyValue || !/^0x[0-9a-fA-F]{40}$/.test(copyValue)) {
+    throw new ConfigValidationError(`${code}.recipient`)
+  }
+  if (!Array.isArray(value.presetAmounts) || !value.presetAmounts.length) {
+    throw new ConfigValidationError(`${code}.presetAmounts`)
+  }
+  const rawAmounts = value.presetAmounts
+  if (!rawAmounts.every((amount) => typeof amount === 'string')) {
+    throw new ConfigValidationError(`${code}.presetAmounts`)
+  }
+  const presetCents = rawAmounts.map((amount) => parseUsdcCents(amount))
+  if (presetCents.some((amount) => amount === undefined)) {
+    throw new ConfigValidationError(`${code}.presetAmounts`)
+  }
+  const amounts = presetCents as number[]
+  if (new Set(amounts).size !== amounts.length || amounts.some((amount, position) => position > 0 && amount <= amounts[position - 1]!)) {
+    throw new ConfigValidationError(`${code}.presetAmounts.order`)
+  }
+  const defaultAmount = readRequiredString(value, 'defaultAmount')
+  const customMin = readRequiredString(value, 'customMin')
+  const customMax = readRequiredString(value, 'customMax')
+  const defaultCents = defaultAmount ? parseUsdcCents(defaultAmount) : undefined
+  const minCents = customMin ? parseUsdcCents(customMin) : undefined
+  const maxCents = customMax ? parseUsdcCents(customMax) : undefined
+  if (defaultCents === undefined) throw new ConfigValidationError(`${code}.defaultAmount`)
+  if (minCents === undefined || maxCents === undefined || minCents >= maxCents) {
+    throw new ConfigValidationError(`${code}.customRange`)
+  }
+  if (!amounts.includes(defaultCents)) throw new ConfigValidationError(`${code}.defaultAmount.member`)
+  if (amounts.some((amount) => amount < minCents || amount > maxCents)) {
+    throw new ConfigValidationError(`${code}.presetAmounts.range`)
+  }
+  return {
+    presetAmounts: amounts.map(formatUsdcCents),
+    defaultAmount: formatUsdcCents(defaultCents),
+    customMin: formatUsdcCents(minCents),
+    customMax: formatUsdcCents(maxCents),
+  }
+}
+
 /** 校验共享赞赏渠道，喵~ */
 function parseSharedChannel(value: unknown, index: number): SharedRewardChannel {
   if (!isRecord(value)) throw new ConfigValidationError(`channels.${index}`)
@@ -110,7 +158,13 @@ function parseSharedChannel(value: unknown, index: number): SharedRewardChannel 
   if (value.copyValue !== undefined && !copyValue) {
     throw new ConfigValidationError(`channels.${index}.copyValue`)
   }
-  return copyValue ? { id, qrImage, copyValue } : { id, qrImage }
+  const basePay = parseBasePay(value.basePay, index, copyValue)
+  return {
+    id,
+    qrImage,
+    ...(copyValue ? { copyValue } : {}),
+    ...(basePay ? { basePay } : {}),
+  }
 }
 
 /** 校验本地化个人资料文案，喵~ */
@@ -133,6 +187,35 @@ function parseLocalizedProfile(value: unknown, locale: SupportedLocale): Localiz
     intro = value.intro.map((item) => item.trim())
   }
   return { ...result, intro } as LocalizedProfileConfig
+}
+
+/** 校验 Base Pay 的本地化交互文案，喵~ */
+function parseBasePayUi(value: unknown, locale: SupportedLocale): BasePayUiConfig {
+  if (!isRecord(value)) throw new ConfigValidationError(`locales.${locale}.ui.basePay`)
+  const keys = [
+    'amountLabel',
+    'customAmountLabel',
+    'customAmountPlaceholder',
+    'invalidAmount',
+    'preparing',
+    'payButtonLabel',
+    'awaitingApproval',
+    'confirming',
+    'success',
+    'cancelled',
+    'failed',
+    'timeout',
+    'paymentIdLabel',
+    'recheck',
+    'restart',
+    'fallbackSummary',
+    'testnetNotice',
+  ] as const
+  const result = Object.fromEntries(keys.map((key) => [key, readRequiredString(value, key)]))
+  if (Object.values(result).some((item) => !item)) {
+    throw new ConfigValidationError(`locales.${locale}.ui.basePay.fields`)
+  }
+  return result as unknown as BasePayUiConfig
 }
 
 /** 校验本地化界面文案与隐私地址，喵~ */
@@ -164,7 +247,10 @@ function parseUi(value: unknown, locale: SupportedLocale): UiConfig {
   if (!isPublicWebUrl(result.privacyPolicyUrl!)) {
     throw new ConfigValidationError(`locales.${locale}.ui.privacyPolicyUrl`)
   }
-  return result as unknown as UiConfig
+  return {
+    ...(result as unknown as Omit<UiConfig, 'basePay'>),
+    basePay: parseBasePayUi(value.basePay, locale),
+  }
 }
 
 /** 校验单个渠道的本地化文案，喵~ */
@@ -241,6 +327,9 @@ export function parseAppConfig(value: unknown): AppConfig {
   const channels = value.channels.map(parseSharedChannel)
   const channelIds = channels.map((channel) => channel.id)
   if (new Set(channelIds).size !== channelIds.length) throw new ConfigValidationError('channels.duplicateId')
+  if (channels.filter((channel) => channel.basePay).length > 1) {
+    throw new ConfigValidationError('channels.basePay.duplicate')
+  }
 
   const profile = parseSharedProfile(value.profile)
   if (!isRecord(value.locales)) throw new ConfigValidationError('locales')

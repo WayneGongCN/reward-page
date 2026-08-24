@@ -1,11 +1,26 @@
 import './styles.css'
+import basePayLogoWhite from './assets/base-pay-logo-white.svg'
 import { initializeAnalytics, trackAnalyticsEvent } from './analytics'
+import {
+  bindBasePayView,
+  configureBasePay,
+  getBasePayNetwork,
+  preloadBasePaySdk,
+  recheckBasePayPayment,
+  restartBasePayPayment,
+  selectBasePayAmount,
+  setBasePayCustomAmount,
+  startBasePayPayment,
+  type BasePayPhase,
+  type BasePayState,
+} from './base-pay'
 import { renderUtterances } from './comments'
 import { loadAppConfig, resolveAppConfig } from './config'
 import { setupIframeAutoResize } from './iframe-resize'
 import { detectLocale, persistLocale } from './localization'
 import type { PageOptions, ResolvedAppConfig, RewardChannel, SupportedLocale } from './types'
 import { parsePageOptions } from './url-options'
+import { normalizeUsdcAmount } from './usdc-amount'
 
 const LOCALE_LABELS: Record<SupportedLocale, string> = {
   'zh-CN': '简体中文',
@@ -18,6 +33,11 @@ const FATAL_ERROR_MESSAGES: Record<SupportedLocale, string> = {
 }
 
 type PageTab = 'reward' | 'comments'
+
+const BASE_PAY_NETWORK = getBasePayNetwork()
+let activeLocaleForAnalytics: SupportedLocale = 'zh-CN'
+let disposeBasePayView = (): void => undefined
+let basePayObserver: IntersectionObserver | undefined
 
 /** 获取初始化 HTML 中唯一的应用根节点，喵~ */
 function getAppRoot(): HTMLDivElement {
@@ -168,6 +188,229 @@ function renderChannel(channel: RewardChannel, config: ResolvedAppConfig): HTMLE
   return article
 }
 
+/** 为 Base Pay 的折叠备用入口渲染二维码与地址，喵~ */
+function renderBasePayFallback(channel: RewardChannel, config: ResolvedAppConfig): HTMLElement {
+  const content = createElement('div', 'channel-card__qr-content')
+  const imageFrame = createElement('div', 'channel-card__image-frame')
+  const image = createElement('img', 'channel-card__image')
+  image.src = channel.qrImage
+  image.alt = channel.alt
+  image.decoding = 'async'
+  image.width = 320
+  image.height = 320
+  image.addEventListener('error', () => {
+    imageFrame.classList.add('channel-card__image-frame--error')
+    imageFrame.replaceChildren(createElement('p', 'channel-card__image-error', config.ui.imageError))
+  }, { once: true })
+  notifyAfterImageSettles(image)
+  imageFrame.append(image)
+  content.append(imageFrame)
+
+  const copyValue = channel.copyValue!
+  const copyArea = createElement('div', 'channel-card__copy')
+  const label = createElement('span', 'channel-card__address-label', config.ui.addressLabel)
+  const address = createElement('code', 'channel-card__address', copyValue)
+  const button = createElement('button', 'channel-card__copy-button', config.ui.copyAddress)
+  const status = createElement('span', 'channel-card__copy-status')
+  button.type = 'button'
+  status.setAttribute('role', 'status')
+  status.setAttribute('aria-live', 'polite')
+  button.addEventListener('click', async () => {
+    button.disabled = true
+    const copied = await copyPublicText(copyValue)
+    status.textContent = copied ? config.ui.copySuccess : config.ui.copyFailure
+    button.textContent = copied ? config.ui.copySuccess : config.ui.copyAddress
+    button.disabled = false
+  })
+  copyArea.append(label, address, button, status)
+  content.append(copyArea)
+  return content
+}
+
+/** 将支付阶段映射为当前语言的用户提示，喵~ */
+function getBasePayStatusText(phase: BasePayPhase, config: ResolvedAppConfig): string {
+  const messages = config.ui.basePay
+  const statusMap: Partial<Record<BasePayPhase, string>> = {
+    loading: messages.preparing,
+    unavailable: messages.failed,
+    awaiting: messages.awaitingApproval,
+    confirming: messages.confirming,
+    success: messages.success,
+    cancelled: messages.cancelled,
+    failed: messages.failed,
+    timeout: messages.timeout,
+  }
+  return statusMap[phase] ?? ''
+}
+
+/** 渲染集成 Base Pay 且保留二维码备用入口的渠道，喵~ */
+function renderBasePayChannel(channel: RewardChannel, config: ResolvedAppConfig): HTMLElement {
+  const basePay = channel.basePay!
+  const recipient = channel.copyValue!
+  configureBasePay(basePay.defaultAmount)
+
+  const article = createElement('article', 'channel-card channel-card--base-pay')
+  article.dataset.channelId = channel.id
+  article.append(createElement('h3', 'channel-card__title', channel.name))
+  if (channel.description) article.append(createElement('p', 'channel-card__description', channel.description))
+  if (BASE_PAY_NETWORK === 'base-sepolia') {
+    article.append(createElement('p', 'base-pay__testnet-notice', config.ui.basePay.testnetNotice))
+  }
+
+  const amountFieldset = createElement('fieldset', 'base-pay__amount-fieldset')
+  const amountLegend = createElement('legend', 'base-pay__amount-label', config.ui.basePay.amountLabel)
+  const presetGroup = createElement('div', 'base-pay__presets')
+  const presetButtons = basePay.presetAmounts.map((amount) => {
+    const button = createElement('button', 'base-pay__preset', `${amount} USDC`)
+    button.type = 'button'
+    button.dataset.basePayAmount = amount
+    button.addEventListener('click', () => selectBasePayAmount(amount))
+    presetGroup.append(button)
+    return button
+  })
+  amountFieldset.append(amountLegend, presetGroup)
+
+  const customGroup = createElement('div', 'base-pay__custom')
+  const customLabel = createElement('label', 'base-pay__custom-label', config.ui.basePay.customAmountLabel)
+  const customInput = createElement('input', 'base-pay__custom-input')
+  customInput.id = `base-pay-custom-${channel.id}`
+  customInput.type = 'text'
+  customInput.inputMode = 'decimal'
+  customInput.autocomplete = 'off'
+  customInput.placeholder = config.ui.basePay.customAmountPlaceholder
+  customLabel.htmlFor = customInput.id
+  customInput.addEventListener('input', () => setBasePayCustomAmount(customInput.value))
+  customGroup.append(customLabel, customInput)
+
+  const payButton = createElement('button', 'base-pay__button')
+  payButton.type = 'button'
+  payButton.setAttribute('aria-label', config.ui.basePay.payButtonLabel)
+  const payLogo = createElement('img', 'base-pay__logo')
+  payLogo.src = basePayLogoWhite
+  payLogo.alt = ''
+  payLogo.width = 112
+  payLogo.height = 24
+  payButton.append(payLogo)
+
+  const status = createElement('p', 'base-pay__status')
+  status.setAttribute('role', 'status')
+  status.setAttribute('aria-live', 'polite')
+  const paymentId = createElement('div', 'base-pay__payment-id')
+  const paymentIdLabel = createElement('span', 'base-pay__payment-id-label', config.ui.basePay.paymentIdLabel)
+  const paymentIdValue = createElement('code', 'base-pay__payment-id-value')
+  paymentId.append(paymentIdLabel, paymentIdValue)
+  const timeoutActions = createElement('div', 'base-pay__timeout-actions')
+  const recheckButton = createElement('button', 'base-pay__secondary-button', config.ui.basePay.recheck)
+  const restartButton = createElement('button', 'base-pay__secondary-button', config.ui.basePay.restart)
+  recheckButton.type = 'button'
+  restartButton.type = 'button'
+  timeoutActions.append(recheckButton, restartButton)
+
+  let fallbackDetails: HTMLDetailsElement | undefined
+  let fallbackRendered = false
+  const ensureFallback = (): void => {
+    if (!fallbackDetails || fallbackRendered) return
+    fallbackRendered = true
+    fallbackDetails.append(renderBasePayFallback(channel, config))
+  }
+  if (BASE_PAY_NETWORK === 'base') {
+    fallbackDetails = createElement('details', 'base-pay__fallback')
+    const summary = createElement('summary', 'base-pay__fallback-summary', config.ui.basePay.fallbackSummary)
+    fallbackDetails.append(summary)
+    fallbackDetails.addEventListener('toggle', () => {
+      if (fallbackDetails?.open) ensureFallback()
+    })
+  }
+
+  const widget = createElement('div', 'base-pay')
+  widget.append(amountFieldset, customGroup, payButton, status, paymentId, timeoutActions)
+  article.append(widget)
+  if (fallbackDetails) article.append(fallbackDetails)
+
+  const callbacks = {
+    onStart: (): void => {
+      trackAnalyticsEvent('reward_base_pay_start', { content_language: activeLocaleForAnalytics })
+    },
+    onResult: (result: 'completed' | 'cancelled' | 'failed' | 'timeout'): void => {
+      trackAnalyticsEvent('reward_base_pay_result', {
+        content_language: activeLocaleForAnalytics,
+        result,
+      })
+    },
+  }
+
+  const updateView = (paymentState: BasePayState): void => {
+    const busy = paymentState.phase === 'awaiting' || paymentState.phase === 'confirming'
+    const customAmount = paymentState.customAmount
+      ? normalizeUsdcAmount(paymentState.customAmount, basePay.customMin, basePay.customMax)
+      : undefined
+    const chosenAmount = paymentState.customAmount ? customAmount : paymentState.selectedAmount
+    const invalidCustomAmount = Boolean(paymentState.customAmount && !customAmount)
+    for (const button of presetButtons) {
+      const selected = !paymentState.customAmount && button.dataset.basePayAmount === paymentState.selectedAmount
+      button.setAttribute('aria-pressed', String(selected))
+      button.classList.toggle('base-pay__preset--selected', selected)
+      button.disabled = busy || paymentState.phase === 'timeout'
+    }
+    if (customInput.value !== paymentState.customAmount) customInput.value = paymentState.customAmount
+    customInput.disabled = busy || paymentState.phase === 'timeout'
+    customInput.setAttribute('aria-invalid', String(invalidCustomAmount))
+    payButton.disabled = !chosenAmount
+      || invalidCustomAmount
+      || !['ready', 'success', 'cancelled', 'failed'].includes(paymentState.phase)
+    status.textContent = invalidCustomAmount
+      ? config.ui.basePay.invalidAmount
+      : getBasePayStatusText(paymentState.phase, config)
+    status.classList.toggle('base-pay__status--error', ['unavailable', 'failed'].includes(paymentState.phase))
+    status.classList.toggle('base-pay__status--success', paymentState.phase === 'success')
+    paymentId.hidden = paymentState.phase !== 'timeout' || !paymentState.paymentId
+    paymentIdValue.textContent = paymentState.paymentId ?? ''
+    timeoutActions.hidden = paymentState.phase !== 'timeout'
+    if (paymentState.phase === 'unavailable' && fallbackDetails) {
+      ensureFallback()
+      fallbackDetails.open = true
+    }
+  }
+
+  disposeBasePayView()
+  disposeBasePayView = bindBasePayView(updateView)
+
+  payButton.addEventListener('click', () => {
+    const customAmount = normalizeUsdcAmount(customInput.value, basePay.customMin, basePay.customMax)
+    const amount = customInput.value
+      ? customAmount
+      : presetButtons.find((button) => button.getAttribute('aria-pressed') === 'true')?.dataset.basePayAmount
+    if (!amount) return
+    void startBasePayPayment({ amount, recipient, network: BASE_PAY_NETWORK, ...callbacks })
+  })
+  recheckButton.addEventListener('click', () => {
+    void recheckBasePayPayment({ network: BASE_PAY_NETWORK, onResult: callbacks.onResult })
+  })
+  restartButton.addEventListener('click', restartBasePayPayment)
+
+  const prepare = (): void => {
+    void preloadBasePaySdk().catch(() => undefined)
+  }
+  if (typeof IntersectionObserver === 'function') {
+    basePayObserver?.disconnect()
+    basePayObserver = new IntersectionObserver((entries, observer) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      observer.disconnect()
+      prepare()
+    }, { rootMargin: '300px' })
+    basePayObserver.observe(article)
+  } else {
+    prepare()
+  }
+
+  return article
+}
+
+/** 根据渠道能力渲染普通二维码或 Base Pay 卡片，喵~ */
+function renderRewardChannel(channel: RewardChannel, config: ResolvedAppConfig): HTMLElement {
+  return channel.basePay ? renderBasePayChannel(channel, config) : renderChannel(channel, config)
+}
+
 /** 渲染 GA 启用时必须展示的精简隐私说明，喵~ */
 function renderPrivacy(config: ResolvedAppConfig): HTMLElement {
   const footer = createElement('footer', 'privacy-note')
@@ -213,7 +456,7 @@ function renderRewardPanel(config: ResolvedAppConfig, options: PageOptions): HTM
   const visibleChannels = config.channels.filter((channel) => visibleIdSet.has(channel.id))
   if (visibleChannels.length) {
     const grid = createElement('div', 'channels__grid')
-    for (const channel of visibleChannels) grid.append(renderChannel(channel, config))
+    for (const channel of visibleChannels) grid.append(renderRewardChannel(channel, config))
     section.append(grid)
   } else {
     section.append(createElement('p', 'empty-state', config.ui.noChannels))
@@ -294,11 +537,17 @@ function renderPage(
   onLocaleChange: (locale: SupportedLocale) => void,
   onActiveTabChange: (tab: PageTab) => void,
 ): void {
+  activeLocaleForAnalytics = locale
+  basePayObserver?.disconnect()
+  basePayObserver = undefined
+  disposeBasePayView()
+  disposeBasePayView = (): void => undefined
   document.documentElement.dataset.mode = options.mode
   document.body.dataset.mode = options.mode
   app.setAttribute('aria-busy', 'false')
   const main = createElement('main', 'page-shell')
-  main.append(renderLanguageSwitcher(locale, config.ui.languageSwitcherLabel, onLocaleChange))
+  const topNavigation = createElement('header', 'top-navigation')
+  const languageSwitcher = renderLanguageSwitcher(locale, config.ui.languageSwitcherLabel, onLocaleChange)
   const rewardPanel = renderRewardPanel(config, options)
   if (options.commentsVisible) {
     rewardPanel.id = 'page-panel-reward'
@@ -325,10 +574,13 @@ function renderPage(
       if (notify) onActiveTabChange(nextTab)
     }
     tabList = renderPageTabs(config, activeTab, (nextTab) => activateTab(nextTab, true))
-    main.append(tabList, rewardPanel, commentsPanel)
+    topNavigation.append(tabList, languageSwitcher)
+    main.append(topNavigation, rewardPanel, commentsPanel)
     activateTab(activeTab, false)
   } else {
-    main.append(rewardPanel)
+    topNavigation.classList.add('top-navigation--language-only')
+    topNavigation.append(languageSwitcher)
+    main.append(topNavigation, rewardPanel)
   }
   if (analyticsActive) main.append(renderPrivacy(config))
   app.replaceChildren(main)

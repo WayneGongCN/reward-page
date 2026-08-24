@@ -4,6 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import publicConfig from '../public/config.json'
 import { LOCALE_STORAGE_KEY } from './localization'
 
+const basePaySdkMocks = vi.hoisted(() => ({
+  loadCount: 0,
+  pay: vi.fn(),
+  getPaymentStatus: vi.fn(),
+}))
+
+vi.mock('@base-org/account/payment/browser', () => {
+  basePaySdkMocks.loadCount += 1
+  return {
+    pay: basePaySdkMocks.pay,
+    getPaymentStatus: basePaySdkMocks.getPaymentStatus,
+  }
+})
+
 /** 重建入口脚本需要的最小静态 HTML，喵~ */
 function resetDocument(): void {
   document.documentElement.lang = 'en'
@@ -27,6 +41,9 @@ function resetDocument(): void {
 
 beforeEach(() => {
   vi.resetModules()
+  basePaySdkMocks.loadCount = 0
+  basePaySdkMocks.pay.mockReset()
+  basePaySdkMocks.getPaymentStatus.mockReset()
   ;(window as any).happyDOM.settings.handleDisabledFileLoadingAsSuccess = true
   resetDocument()
   vi.stubGlobal('__APP_CONFIG__', structuredClone(publicConfig))
@@ -35,6 +52,7 @@ beforeEach(() => {
 afterEach(() => {
   ;(window as any).happyDOM.settings.handleDisabledFileLoadingAsSuccess = false
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
   vi.restoreAllMocks()
   Reflect.deleteProperty(navigator, 'clipboard')
   Reflect.deleteProperty(document, 'execCommand')
@@ -80,14 +98,21 @@ describe('赞赏页多语言入口', () => {
     expect(document.querySelector('.channels__title')?.textContent).toBe('Choose a way to support')
     expect(document.querySelector('[role="tablist"]')?.getAttribute('aria-label'))
       .toBe('Switch between support and comments')
+    expect(document.querySelector('.top-navigation')?.firstElementChild)
+      .toBe(document.querySelector('.page-tabs'))
+    expect(document.querySelector('.top-navigation')?.lastElementChild)
+      .toBe(document.querySelector('.language-switcher'))
     expect(document.querySelector('[data-page-tab="reward"]')?.getAttribute('aria-selected')).toBe('true')
     expect(document.querySelector('.comments')).toBeNull()
     expect(document.querySelectorAll('script[src="https://utteranc.es/client.js"]')).toHaveLength(0)
     expect(document.querySelector<HTMLImageElement>('[data-channel-id="wechat"] img')?.alt)
       .toBe('Wayne’s WeChat reward QR code')
     expect(document.querySelector('[data-channel-id="wechat"] .channel-card__copy')).toBeNull()
-    expect(document.querySelector('[data-channel-id="base"] .channel-card__address')?.textContent)
-      .toBe('0xEF787423A25713C0c979d4F5323FB05b2C2b5D38')
+    expect(document.querySelector('[data-channel-id="base"] .channel-card__address')).toBeNull()
+    expect(document.querySelector('[data-channel-id="base"] .base-pay__testnet-notice')).not.toBeNull()
+    expect(document.querySelector('[data-channel-id="base"] .base-pay__fallback')).toBeNull()
+    expect(document.querySelector('[data-channel-id="base"] .base-pay__preset--selected')?.textContent)
+      .toBe('3.00 USDC')
     expect(document.querySelector('[data-channel-id="base"] .channel-card__description')?.textContent)
       .toBe('USDC on the Base network only')
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute('content'))
@@ -154,6 +179,8 @@ describe('赞赏页多语言入口', () => {
 
     expect(document.body.dataset.mode).toBe('embed')
     expect(document.querySelector('.language-switcher')).not.toBeNull()
+    expect(document.querySelector('.top-navigation')?.classList.contains('top-navigation--language-only')).toBe(true)
+    expect(document.querySelector('.top-navigation')?.children).toHaveLength(1)
     expect(document.querySelector('.profile')).toBeNull()
     expect(document.querySelectorAll('.channel-card')).toHaveLength(1)
     expect(document.querySelector<HTMLElement>('.channel-card')?.dataset.channelId).toBe('alipay')
@@ -291,5 +318,119 @@ describe('赞赏页多语言入口', () => {
         .toBe('Copy failed. Please copy it manually.')
     })
     expect(document.querySelector('.channel-card__address')?.textContent).toBe('TTestUsdtAddress')
+  })
+
+  it('在测试网完成预设和自定义金额支付，并在语言切换后恢复成功状态', async () => {
+    basePaySdkMocks.pay.mockResolvedValue({ id: 'payment-success' })
+    basePaySdkMocks.getPaymentStatus.mockResolvedValue({ status: 'completed' })
+    let observerCallback: IntersectionObserverCallback | undefined
+    let observerInstance: IntersectionObserver | undefined
+    class TestIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback
+        observerInstance = this as unknown as IntersectionObserver
+      }
+
+      observe(): void {}
+      disconnect(): void {}
+      unobserve(): void {}
+      takeRecords(): IntersectionObserverEntry[] { return [] }
+      readonly root = null
+      readonly rootMargin = '300px'
+      readonly thresholds = [0]
+    }
+    vi.stubGlobal('IntersectionObserver', TestIntersectionObserver)
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en')
+    await import('./main')
+
+    const payButton = document.querySelector<HTMLButtonElement>('.base-pay__button')!
+    expect(payButton.disabled).toBe(true)
+    observerCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], observerInstance!)
+    await vi.waitFor(() => expect(payButton.disabled).toBe(false))
+    document.querySelector<HTMLButtonElement>('[data-base-pay-amount="5.00"]')?.click()
+    expect(document.querySelector('.base-pay__preset--selected')?.textContent).toBe('5.00 USDC')
+
+    const customInput = document.querySelector<HTMLInputElement>('.base-pay__custom-input')!
+    customInput.value = '2.999'
+    customInput.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(payButton.disabled).toBe(true)
+    expect(customInput.getAttribute('aria-invalid')).toBe('true')
+
+    customInput.value = '2.50'
+    customInput.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(payButton.disabled).toBe(false)
+    expect(document.querySelector('.base-pay__preset--selected')).toBeNull()
+    payButton.click()
+
+    await vi.waitFor(() => {
+      expect(basePaySdkMocks.pay).toHaveBeenCalledWith({
+        amount: '2.50',
+        to: '0xEF787423A25713C0c979d4F5323FB05b2C2b5D38',
+        testnet: true,
+        telemetry: false,
+      })
+      expect(document.querySelector('.base-pay__status')?.textContent)
+        .toBe('Thank you for your USDC support. The payment is confirmed.')
+    })
+    expect(basePaySdkMocks.getPaymentStatus).toHaveBeenCalledWith({
+      id: 'payment-success',
+      expectedPayment: {
+        amount: '2.50',
+        recipient: '0xEF787423A25713C0c979d4F5323FB05b2C2b5D38',
+      },
+      testnet: true,
+      telemetry: false,
+    })
+
+    document.querySelector<HTMLButtonElement>('[lang="zh-CN"]')?.click()
+    expect(document.querySelector<HTMLInputElement>('.base-pay__custom-input')?.value).toBe('2.50')
+    expect(document.querySelector('.base-pay__status')?.textContent)
+      .toBe('感谢你的 USDC 赞赏，付款已确认。')
+  })
+
+  it('主网默认折叠备用钱包，并在展开时才渲染二维码与复制地址', async () => {
+    vi.stubEnv('VITE_BASE_PAY_NETWORK', 'base')
+    await import('./main')
+
+    const card = document.querySelector<HTMLElement>('[data-channel-id="base"]')!
+    const details = card.querySelector<HTMLDetailsElement>('.base-pay__fallback')!
+    expect(card.querySelector('.base-pay__testnet-notice')).toBeNull()
+    expect(details.open).toBe(false)
+    expect(details.querySelector('.channel-card__address')).toBeNull()
+    expect(details.querySelector('img')).toBeNull()
+
+    details.open = true
+    details.dispatchEvent(new Event('toggle'))
+    expect(details.querySelector('.channel-card__address')?.textContent)
+      .toBe('0xEF787423A25713C0c979d4F5323FB05b2C2b5D38')
+    expect(details.querySelector<HTMLImageElement>('img')?.src).toContain('/assets/base-reward-code.png')
+  })
+
+  it('URL 过滤 Base 渠道时完全不加载 Base Pay SDK', async () => {
+    window.history.replaceState({}, '', '/?channels=wechat')
+    await import('./main')
+    await Promise.resolve()
+
+    expect(document.querySelector('[data-channel-id="base"]')).toBeNull()
+    expect(basePaySdkMocks.loadCount).toBe(0)
+  })
+
+  it('SDK 加载失败时自动展开主网备用钱包且不影响其他页面能力', async () => {
+    vi.stubEnv('VITE_BASE_PAY_NETWORK', 'base')
+    vi.stubGlobal('IntersectionObserver', undefined)
+    vi.doMock('@base-org/account/payment/browser', () => {
+      throw new Error('SDK load failed')
+    })
+    await import('./main')
+
+    await vi.waitFor(() => {
+      const fallback = document.querySelector<HTMLDetailsElement>('[data-channel-id="base"] .base-pay__fallback')
+      expect(fallback?.open).toBe(true)
+      expect(fallback?.querySelector('.channel-card__address')?.textContent)
+        .toBe('0xEF787423A25713C0c979d4F5323FB05b2C2b5D38')
+    })
+    expect(document.querySelector('[data-channel-id="wechat"]')).not.toBeNull()
+    document.querySelector<HTMLButtonElement>('[data-page-tab="comments"]')?.click()
+    expect(document.querySelector('.comments')).not.toBeNull()
   })
 })
