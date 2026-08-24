@@ -8,6 +8,10 @@
   "profile": {
     "avatar": ""
   },
+  "comments": {
+    "repository": "WayneGongCN/reward-page",
+    "label": "comments"
+  },
   "channels": [
     { "id": "wechat", "qrImage": "/assets/wechat-reward-code.jpg" },
     { "id": "alipay", "qrImage": "/assets/alipay-reward-code.jpg" },
@@ -30,6 +34,14 @@
         "configError": "暂时无法加载赞赏信息，请稍后再试。",
         "noChannels": "当前链接没有可展示的赞赏方式。",
         "imageError": "二维码暂时无法显示",
+        "addressLabel": "钱包地址",
+        "copyAddress": "复制地址",
+        "copySuccess": "已复制",
+        "copyFailure": "复制失败，请手动复制",
+        "commentsTitle": "留言",
+        "commentsDescription": "评论将公开保存到 GitHub Issues，登录 GitHub 后即可参与。",
+        "commentsLoading": "正在加载评论…",
+        "commentsLoadError": "评论暂时无法加载，请稍后再试。",
         "privacyNotice": "本站使用 Google Analytics 收集匿名访问数据。",
         "privacyLinkLabel": "了解 Google 隐私政策",
         "privacyPolicyUrl": "https://policies.google.com/privacy?hl=zh-CN",
@@ -69,6 +81,14 @@
         "configError": "Reward information is temporarily unavailable. Please try again later.",
         "noChannels": "There are no reward options available for this link.",
         "imageError": "The QR code is temporarily unavailable",
+        "addressLabel": "Wallet address",
+        "copyAddress": "Copy address",
+        "copySuccess": "Copied",
+        "copyFailure": "Copy failed. Please copy it manually.",
+        "commentsTitle": "Comments",
+        "commentsDescription": "Comments are public GitHub Issues. Sign in with GitHub to join the conversation.",
+        "commentsLoading": "Loading comments…",
+        "commentsLoadError": "Comments are temporarily unavailable. Please try again later.",
         "privacyNotice": "This site uses Google Analytics to collect anonymous usage data.",
         "privacyLinkLabel": "Learn about Google’s Privacy Policy",
         "privacyPolicyUrl": "https://policies.google.com/privacy?hl=en",

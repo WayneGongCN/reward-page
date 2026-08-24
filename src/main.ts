@@ -1,5 +1,6 @@
 import './styles.css'
 import { initializeAnalytics, trackAnalyticsEvent } from './analytics'
+import { renderUtterances } from './comments'
 import { loadAppConfig, resolveAppConfig } from './config'
 import { setupIframeAutoResize } from './iframe-resize'
 import { detectLocale, persistLocale } from './localization'
@@ -68,6 +69,31 @@ function notifyAfterImageSettles(image: HTMLImageElement): void {
   image.addEventListener('error', notify, { once: true })
 }
 
+/** 复制公开文本，现代剪贴板不可用时回退到受用户手势触发的传统复制能力，喵~ */
+async function copyPublicText(value: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+  } catch {
+    // 继续尝试兼容旧浏览器和未授权 iframe 的回退方案，喵~
+  }
+
+  const textarea = createElement('textarea', 'clipboard-fallback')
+  textarea.value = value
+  textarea.readOnly = true
+  document.body.append(textarea)
+  textarea.select()
+  try {
+    return typeof document.execCommand === 'function' && document.execCommand('copy')
+  } catch {
+    return false
+  } finally {
+    textarea.remove()
+  }
+}
+
 /** 渲染可选的个人资料与简介区域，喵~ */
 function renderProfile(config: ResolvedAppConfig): HTMLElement | undefined {
   const profile = config.profile
@@ -117,6 +143,26 @@ function renderChannel(channel: RewardChannel, config: ResolvedAppConfig): HTMLE
   imageFrame.append(image)
   article.append(heading, imageFrame)
   if (channel.description) article.append(createElement('p', 'channel-card__description', channel.description))
+  const copyValue = channel.copyValue
+  if (copyValue) {
+    const copyArea = createElement('div', 'channel-card__copy')
+    const label = createElement('span', 'channel-card__address-label', config.ui.addressLabel)
+    const address = createElement('code', 'channel-card__address', channel.copyValue)
+    const button = createElement('button', 'channel-card__copy-button', config.ui.copyAddress)
+    const status = createElement('span', 'channel-card__copy-status')
+    button.type = 'button'
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    button.addEventListener('click', async () => {
+      button.disabled = true
+      const copied = await copyPublicText(copyValue)
+      status.textContent = copied ? config.ui.copySuccess : config.ui.copyFailure
+      button.textContent = copied ? config.ui.copySuccess : config.ui.copyAddress
+      button.disabled = false
+    })
+    copyArea.append(label, address, button, status)
+    article.append(copyArea)
+  }
   return article
 }
 
@@ -130,6 +176,22 @@ function renderPrivacy(config: ResolvedAppConfig): HTMLElement {
   link.rel = 'noreferrer'
   footer.append(text, document.createTextNode(' '), link)
   return footer
+}
+
+/** 渲染由 GitHub Issues 承载的公开评论区，喵~ */
+function renderComments(config: ResolvedAppConfig): HTMLElement {
+  const section = createElement('section', 'comments')
+  section.setAttribute('aria-labelledby', 'comments-title')
+  const title = createElement('h2', 'comments__title', config.ui.commentsTitle)
+  title.id = 'comments-title'
+  const description = createElement('p', 'comments__description', config.ui.commentsDescription)
+  const widget = createElement('div', 'comments__widget')
+  renderUtterances(widget, config.comments, {
+    loading: config.ui.commentsLoading,
+    loadError: config.ui.commentsLoadError,
+  })
+  section.append(title, description, widget)
+  return section
 }
 
 /** 渲染双语切换器，并暴露无刷新切换回调，喵~ */
@@ -187,6 +249,7 @@ function renderPage(
     section.append(createElement('p', 'empty-state', config.ui.noChannels))
   }
   main.append(section)
+  if (options.commentsVisible) main.append(renderComments(config))
   if (analyticsActive) main.append(renderPrivacy(config))
   app.replaceChildren(main)
 }
@@ -239,6 +302,7 @@ function start(): void {
       trackAnalyticsEvent('reward_page_view', {
         display_mode: options.mode,
         intro_visible: options.introVisible,
+        comments_visible: options.commentsVisible,
         visible_channels: options.visibleChannelIds.join(','),
         content_language: currentLocale,
       })

@@ -1,6 +1,7 @@
 import {
   SUPPORTED_LOCALES,
   type AppConfig,
+  type CommentsConfig,
   type LocalizedPageContent,
   type LocalizedProfileConfig,
   type LocalizedRewardChannel,
@@ -85,15 +86,31 @@ function parseSharedProfile(value: unknown): SharedProfileConfig | undefined {
   return { avatar }
 }
 
+/** 校验 utterances 使用的公开 GitHub 仓库与评论标签，喵~ */
+function parseComments(value: unknown): CommentsConfig {
+  if (!isRecord(value)) throw new ConfigValidationError('comments')
+  const repository = readRequiredString(value, 'repository')
+  const label = readRequiredString(value, 'label')
+  if (!repository || !label) throw new ConfigValidationError('comments.fields')
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/.test(repository)) {
+    throw new ConfigValidationError('comments.repository')
+  }
+  return { repository, label }
+}
+
 /** 校验共享赞赏渠道，喵~ */
 function parseSharedChannel(value: unknown, index: number): SharedRewardChannel {
   if (!isRecord(value)) throw new ConfigValidationError(`channels.${index}`)
   const id = readRequiredString(value, 'id')
   const qrImage = readRequiredString(value, 'qrImage')
+  const copyValue = readOptionalString(value, 'copyValue')
   if (!id || !qrImage) throw new ConfigValidationError(`channels.${index}.fields`)
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new ConfigValidationError(`channels.${index}.id`)
   if (!isSafeAssetPath(qrImage)) throw new ConfigValidationError(`channels.${index}.qrImage`)
-  return { id, qrImage }
+  if (value.copyValue !== undefined && !copyValue) {
+    throw new ConfigValidationError(`channels.${index}.copyValue`)
+  }
+  return copyValue ? { id, qrImage, copyValue } : { id, qrImage }
 }
 
 /** 校验本地化个人资料文案，喵~ */
@@ -126,6 +143,14 @@ function parseUi(value: unknown, locale: SupportedLocale): UiConfig {
     'configError',
     'noChannels',
     'imageError',
+    'addressLabel',
+    'copyAddress',
+    'copySuccess',
+    'copyFailure',
+    'commentsTitle',
+    'commentsDescription',
+    'commentsLoading',
+    'commentsLoadError',
     'privacyNotice',
     'privacyLinkLabel',
     'privacyPolicyUrl',
@@ -244,6 +269,7 @@ export function parseAppConfig(value: unknown): AppConfig {
     socialLocale: parseLocale(value.socialLocale, 'socialLocale'),
     meta: parseSharedMeta(value.meta),
     profile,
+    comments: parseComments(value.comments),
     channels,
     locales,
   }
@@ -255,6 +281,7 @@ export function resolveAppConfig(config: AppConfig, locale: SupportedLocale): Re
   return {
     meta: { ...config.meta, ...localized.meta },
     profile: config.profile && localized.profile ? { ...config.profile, ...localized.profile } : undefined,
+    comments: config.comments,
     ui: localized.ui,
     channels: config.channels.map((channel) => ({ ...channel, ...localized.channels[channel.id]! })),
   }

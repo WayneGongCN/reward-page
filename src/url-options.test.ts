@@ -8,6 +8,7 @@ describe('parsePageOptions', () => {
     expect(parsePageOptions('', channelIds)).toEqual({
       mode: 'full',
       introVisible: true,
+      commentsVisible: true,
       visibleChannelIds: channelIds,
     })
   })
@@ -16,6 +17,7 @@ describe('parsePageOptions', () => {
     expect(parsePageOptions('?mode=embed', channelIds)).toEqual({
       mode: 'embed',
       introVisible: false,
+      commentsVisible: false,
       visibleChannelIds: channelIds,
     })
   })
@@ -24,6 +26,17 @@ describe('parsePageOptions', () => {
     expect(parsePageOptions('?mode=embed&intro=1', channelIds).introVisible).toBe(true)
     expect(parsePageOptions('?intro=0', channelIds).introVisible).toBe(false)
     expect(parsePageOptions('?mode=embed&intro=yes', channelIds).introVisible).toBe(false)
+  })
+
+  it('评论默认值跟随模式，并允许合法参数覆盖', () => {
+    expect(parsePageOptions('?comments=0', channelIds).commentsVisible).toBe(false)
+    expect(parsePageOptions('?mode=embed&comments=1', channelIds).commentsVisible).toBe(true)
+    expect(parsePageOptions('?mode=embed&comments=0', channelIds).commentsVisible).toBe(false)
+  })
+
+  it.each(['', 'yes', '2'])('评论参数为“%s”时回退到模式默认值', (value) => {
+    expect(parsePageOptions(`?comments=${value}`, channelIds).commentsVisible).toBe(true)
+    expect(parsePageOptions(`?mode=embed&comments=${value}`, channelIds).commentsVisible).toBe(false)
   })
 
   it('渠道筛选去重、忽略未知值并保留配置顺序', () => {

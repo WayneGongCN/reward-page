@@ -7,6 +7,14 @@ const validUi = {
   configError: '加载失败',
   noChannels: '没有渠道',
   imageError: '图片失败',
+  addressLabel: '钱包地址',
+  copyAddress: '复制地址',
+  copySuccess: '已复制',
+  copyFailure: '复制失败',
+  commentsTitle: '留言',
+  commentsDescription: '评论公开保存到 GitHub Issues',
+  commentsLoading: '正在加载评论',
+  commentsLoadError: '评论加载失败',
   privacyNotice: '匿名统计',
   privacyLinkLabel: '隐私政策',
   privacyPolicyUrl: 'https://policies.google.com/privacy',
@@ -22,6 +30,10 @@ const validConfig = {
   },
   profile: {
     avatar: '/assets/avatar.svg',
+  },
+  comments: {
+    repository: 'WayneGongCN/reward-page',
+    label: 'comments',
   },
   channels: [
     {
@@ -102,6 +114,38 @@ describe('parseAppConfig', () => {
     expect(() => parseAppConfig(input)).toThrowError(new ConfigValidationError('channels.duplicateId'))
   })
 
+  it('解析并修剪合法的 GitHub 评论配置', () => {
+    const input = structuredClone(validConfig)
+    input.comments.repository = ' WayneGongCN/reward-page '
+    input.comments.label = ' comments '
+    expect(parseAppConfig(input).comments).toEqual({
+      repository: 'WayneGongCN/reward-page',
+      label: 'comments',
+    })
+  })
+
+  it.each([
+    ['缺少斜杠', 'WayneGongCN-reward-page'],
+    ['存在额外路径', 'WayneGongCN/reward-page/issues'],
+    ['仓库包含空格', 'WayneGongCN/reward page'],
+  ])('拒绝%s形式的评论仓库名', (_name, repository) => {
+    const input = structuredClone(validConfig)
+    input.comments.repository = repository
+    expect(() => parseAppConfig(input)).toThrowError(new ConfigValidationError('comments.repository'))
+  })
+
+  it('拒绝空评论标签', () => {
+    const input = structuredClone(validConfig)
+    input.comments.label = '  '
+    expect(() => parseAppConfig(input)).toThrowError(new ConfigValidationError('comments.fields'))
+  })
+
+  it('拒绝评论本地化文案缺失', () => {
+    const input = structuredClone(validConfig)
+    input.locales.en.ui.commentsLoadError = ''
+    expect(() => parseAppConfig(input)).toThrowError(new ConfigValidationError('locales.en.ui.fields'))
+  })
+
   it('拒绝缺少或额外的语言', () => {
     const missing: any = structuredClone(validConfig)
     delete missing.locales.en
@@ -154,6 +198,39 @@ describe('parseAppConfig', () => {
     input.channels[0]!.qrImage = 'https://example.com/qr.svg'
     expect(() => parseAppConfig(input)).toThrowError(ConfigValidationError)
   })
+
+  it('解析并修剪可复制公开文本，同时保持未配置渠道向后兼容', () => {
+    const input: any = structuredClone(validConfig)
+    input.channels.push({
+      id: 'btc',
+      qrImage: '/assets/btc.svg',
+      copyValue: '  bc1q-test-address  ',
+    })
+    for (const locale of ['zh-CN', 'en'] as const) {
+      input.locales[locale].channels.btc = {
+        name: 'Bitcoin',
+        alt: 'Bitcoin QR code',
+        description: 'Test address',
+      }
+    }
+
+    const config = parseAppConfig(input)
+    expect(config.channels[0]).toEqual({ id: 'wechat', qrImage: '/assets/wechat.svg' })
+    expect(config.channels[1]).toEqual({
+      id: 'btc',
+      qrImage: '/assets/btc.svg',
+      copyValue: 'bc1q-test-address',
+    })
+  })
+
+  it.each([
+    ['空字符串', '  '],
+    ['非字符串', 123],
+  ])('拒绝%s形式的可复制公开文本', (_name, copyValue) => {
+    const input: any = structuredClone(validConfig)
+    input.channels[0].copyValue = copyValue
+    expect(() => parseAppConfig(input)).toThrowError(new ConfigValidationError('channels.0.copyValue'))
+  })
 })
 
 describe('resolveAppConfig', () => {
@@ -166,6 +243,7 @@ describe('resolveAppConfig', () => {
       description: 'Description',
     })
     expect(resolved.profile).toMatchObject({ avatar: '/assets/avatar.svg', name: 'Wayne' })
+    expect(resolved.comments).toEqual({ repository: 'WayneGongCN/reward-page', label: 'comments' })
     expect(resolved.channels).toEqual([{
       id: 'wechat',
       qrImage: '/assets/wechat.svg',
@@ -173,6 +251,12 @@ describe('resolveAppConfig', () => {
       alt: 'WeChat QR code',
       description: 'Scan to support',
     }])
+  })
+
+  it('将可复制公开文本合并到已解析渠道', () => {
+    const input: any = structuredClone(validConfig)
+    input.channels[0].copyValue = 'bc1q-test-address'
+    expect(resolveAppConfig(parseAppConfig(input), 'en').channels[0]?.copyValue).toBe('bc1q-test-address')
   })
 })
 

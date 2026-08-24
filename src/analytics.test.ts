@@ -90,12 +90,14 @@ describe('trackAnalyticsEvent', () => {
     trackAnalyticsEvent('reward_page_view', {
       display_mode: 'embed',
       intro_visible: false,
+      comments_visible: true,
       visible_channels: 'wechat,alipay',
       content_language: 'en',
     })
     expect(readDataLayer(analyticsWindow).at(-1)).toEqual(['event', 'reward_page_view', {
       display_mode: 'embed',
       intro_visible: false,
+      comments_visible: true,
       visible_channels: 'wechat,alipay',
       content_language: 'en',
     }])

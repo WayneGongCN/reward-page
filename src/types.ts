@@ -29,11 +29,24 @@ export interface LocalizedProfileConfig {
 
 export interface ProfileConfig extends SharedProfileConfig, LocalizedProfileConfig {}
 
+export interface CommentsConfig {
+  repository: string
+  label: string
+}
+
 export interface UiConfig {
   channelsTitle: string
   configError: string
   noChannels: string
   imageError: string
+  addressLabel: string
+  copyAddress: string
+  copySuccess: string
+  copyFailure: string
+  commentsTitle: string
+  commentsDescription: string
+  commentsLoading: string
+  commentsLoadError: string
   privacyNotice: string
   privacyLinkLabel: string
   privacyPolicyUrl: string
@@ -43,6 +56,7 @@ export interface UiConfig {
 export interface SharedRewardChannel {
   id: string
   qrImage: string
+  copyValue?: string
 }
 
 export interface LocalizedRewardChannel {
@@ -65,6 +79,7 @@ export interface AppConfig {
   socialLocale: SupportedLocale
   meta: SharedSiteMeta
   profile?: SharedProfileConfig
+  comments: CommentsConfig
   channels: SharedRewardChannel[]
   locales: Record<SupportedLocale, LocalizedPageContent>
 }
@@ -72,6 +87,7 @@ export interface AppConfig {
 export interface ResolvedAppConfig {
   meta: SiteMeta
   profile?: ProfileConfig
+  comments: CommentsConfig
   ui: UiConfig
   channels: RewardChannel[]
 }
@@ -79,5 +95,6 @@ export interface ResolvedAppConfig {
 export interface PageOptions {
   mode: PageMode
   introVisible: boolean
+  commentsVisible: boolean
   visibleChannelIds: string[]
 }

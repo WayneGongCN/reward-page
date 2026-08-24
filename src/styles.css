@@ -222,6 +222,71 @@ a {
   line-height: 1.5;
 }
 
+.channel-card__copy {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.channel-card__address-label {
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.channel-card__address {
+  min-width: 0;
+  padding: 11px 12px;
+  color: #424245;
+  background: #f5f5f7;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.channel-card__copy-button {
+  min-height: 38px;
+  padding: 8px 14px;
+  color: #fff;
+  background: #007aff;
+  border: 0;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.channel-card__copy-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.channel-card__copy-button:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+.channel-card__copy-status {
+  min-height: 18px;
+  color: #6e6e73;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.clipboard-fallback {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 .empty-state {
   margin: 0;
   padding: 48px 24px;
@@ -229,6 +294,48 @@ a {
   border: 1px solid var(--hairline);
   border-radius: var(--card-radius);
   text-align: center;
+}
+
+.comments {
+  max-width: 760px;
+  margin: clamp(54px, 8vw, 86px) auto 0;
+}
+
+.comments__title {
+  margin: 0;
+  font-size: clamp(25px, 3.4vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.comments__description {
+  margin: 12px 0 24px;
+  color: #6e6e73;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.comments__widget {
+  min-height: 80px;
+}
+
+.comments__status {
+  margin: 0;
+  padding: 28px 24px;
+  color: #6e6e73;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.comments__status--error {
+  color: #b42318;
+  background: rgba(255, 246, 245, 0.92);
+  border-color: rgba(180, 35, 24, 0.14);
 }
 
 .privacy-note {
@@ -307,6 +414,14 @@ body[data-mode="embed"] .profile__name {
 body[data-mode="embed"] .channels__title {
   margin-bottom: 16px;
   font-size: clamp(22px, 3vw, 28px);
+}
+
+body[data-mode="embed"] .comments {
+  margin-top: 42px;
+}
+
+body[data-mode="embed"] .comments__description {
+  margin-bottom: 18px;
 }
 
 body[data-mode="embed"] .channel-card {

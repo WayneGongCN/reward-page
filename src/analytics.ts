@@ -7,6 +7,7 @@ interface AnalyticsEventMap {
   reward_page_view: {
     display_mode: PageMode
     intro_visible: boolean
+    comments_visible: boolean
     visible_channels: string
     content_language: SupportedLocale
   }

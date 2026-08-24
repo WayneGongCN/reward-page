@@ -12,6 +12,13 @@ export function parsePageOptions(search: string, configuredChannelIds: string[])
     : requestedIntro === '0'
       ? false
       : defaultIntroVisible
+  const defaultCommentsVisible = mode === 'full'
+  const requestedComments = params.get('comments')
+  const commentsVisible = requestedComments === '1'
+    ? true
+    : requestedComments === '0'
+      ? false
+      : defaultCommentsVisible
 
   let visibleChannelIds = [...configuredChannelIds]
   if (params.has('channels')) {
@@ -24,5 +31,5 @@ export function parsePageOptions(search: string, configuredChannelIds: string[])
     visibleChannelIds = configuredChannelIds.filter((id) => requestedIds.has(id))
   }
 
-  return { mode, introVisible, visibleChannelIds }
+  return { mode, introVisible, commentsVisible, visibleChannelIds }
 }
