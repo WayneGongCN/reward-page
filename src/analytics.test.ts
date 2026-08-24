@@ -91,11 +91,26 @@ describe('trackAnalyticsEvent', () => {
       display_mode: 'embed',
       intro_visible: false,
       visible_channels: 'wechat,alipay',
+      content_language: 'en',
     })
     expect(readDataLayer(analyticsWindow).at(-1)).toEqual(['event', 'reward_page_view', {
       display_mode: 'embed',
       intro_visible: false,
       visible_channels: 'wechat,alipay',
+      content_language: 'en',
+    }])
+  })
+
+  it('语言切换事件只发送前后语言', () => {
+    const { analyticsWindow } = installBrowser()
+    initializeAnalytics({ measurementId: 'G-ABC12345', isProduction: true, telemetryEnabled: true })
+    trackAnalyticsEvent('reward_language_change', {
+      previous_language: 'zh-CN',
+      content_language: 'en',
+    })
+    expect(readDataLayer(analyticsWindow).at(-1)).toEqual(['event', 'reward_language_change', {
+      previous_language: 'zh-CN',
+      content_language: 'en',
     }])
   })
 

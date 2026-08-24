@@ -1,4 +1,16 @@
-import type { AppConfig, ProfileConfig, RewardChannel, SiteMeta, UiConfig } from './types'
+import {
+  SUPPORTED_LOCALES,
+  type AppConfig,
+  type LocalizedPageContent,
+  type LocalizedProfileConfig,
+  type LocalizedRewardChannel,
+  type ResolvedAppConfig,
+  type SharedProfileConfig,
+  type SharedRewardChannel,
+  type SharedSiteMeta,
+  type SupportedLocale,
+  type UiConfig,
+} from './types'
 
 export class ConfigValidationError extends Error {
   readonly code: string
@@ -44,44 +56,71 @@ function isPublicWebUrl(value: string): boolean {
   }
 }
 
-/** 校验站点元信息配置，喵~ */
-function parseMeta(value: unknown): SiteMeta {
-  if (!isRecord(value)) throw new ConfigValidationError('meta')
-  const title = readRequiredString(value, 'title')
-  const description = readRequiredString(value, 'description')
-  const canonicalUrl = readRequiredString(value, 'canonicalUrl')
-  const shareImage = readRequiredString(value, 'shareImage')
-  if (!title || !description || !canonicalUrl || !shareImage) throw new ConfigValidationError('meta.fields')
-  if (!isPublicWebUrl(canonicalUrl)) throw new ConfigValidationError('meta.canonicalUrl')
-  if (!isSafeAssetPath(shareImage)) throw new ConfigValidationError('meta.shareImage')
-  return { title, description, canonicalUrl, shareImage }
+/** 校验语言值属于首期固定支持范围，喵~ */
+function parseLocale(value: unknown, code: string): SupportedLocale {
+  if (typeof value !== 'string' || !SUPPORTED_LOCALES.includes(value as SupportedLocale)) {
+    throw new ConfigValidationError(code)
+  }
+  return value as SupportedLocale
 }
 
-/** 校验可选个人资料配置，喵~ */
-function parseProfile(value: unknown): ProfileConfig | undefined {
+/** 校验共享站点元信息配置，喵~ */
+function parseSharedMeta(value: unknown): SharedSiteMeta {
+  if (!isRecord(value)) throw new ConfigValidationError('meta')
+  const canonicalUrl = readRequiredString(value, 'canonicalUrl')
+  const shareImage = readRequiredString(value, 'shareImage')
+  if (!canonicalUrl || !shareImage) throw new ConfigValidationError('meta.fields')
+  if (!isPublicWebUrl(canonicalUrl)) throw new ConfigValidationError('meta.canonicalUrl')
+  if (!isSafeAssetPath(shareImage)) throw new ConfigValidationError('meta.shareImage')
+  return { canonicalUrl, shareImage }
+}
+
+/** 校验可选共享个人资料配置，喵~ */
+function parseSharedProfile(value: unknown): SharedProfileConfig | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new ConfigValidationError('profile')
   const avatar = readOptionalString(value, 'avatar')
-  const name = readOptionalString(value, 'name')
-  const headline = readOptionalString(value, 'headline')
   if (value.avatar !== undefined && typeof value.avatar !== 'string') throw new ConfigValidationError('profile.avatar')
   if (avatar && !isSafeAssetPath(avatar)) throw new ConfigValidationError('profile.avatar')
-  if (value.name !== undefined && typeof value.name !== 'string') throw new ConfigValidationError('profile.name')
-  if (value.headline !== undefined && typeof value.headline !== 'string') throw new ConfigValidationError('profile.headline')
+  return { avatar }
+}
+
+/** 校验共享赞赏渠道，喵~ */
+function parseSharedChannel(value: unknown, index: number): SharedRewardChannel {
+  if (!isRecord(value)) throw new ConfigValidationError(`channels.${index}`)
+  const id = readRequiredString(value, 'id')
+  const qrImage = readRequiredString(value, 'qrImage')
+  if (!id || !qrImage) throw new ConfigValidationError(`channels.${index}.fields`)
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new ConfigValidationError(`channels.${index}.id`)
+  if (!isSafeAssetPath(qrImage)) throw new ConfigValidationError(`channels.${index}.qrImage`)
+  return { id, qrImage }
+}
+
+/** 校验本地化个人资料文案，喵~ */
+function parseLocalizedProfile(value: unknown, locale: SupportedLocale): LocalizedProfileConfig | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new ConfigValidationError(`locales.${locale}.profile`)
+  const optionalKeys = ['name', 'headline', 'avatarAlt'] as const
+  const result = Object.fromEntries(optionalKeys.map((key) => [key, readOptionalString(value, key)]))
+  for (const key of optionalKeys) {
+    if (value[key] !== undefined && typeof value[key] !== 'string') {
+      throw new ConfigValidationError(`locales.${locale}.profile.${key}`)
+    }
+  }
 
   let intro: string[] | undefined
   if (value.intro !== undefined) {
     if (!Array.isArray(value.intro) || !value.intro.every((item) => typeof item === 'string' && item.trim())) {
-      throw new ConfigValidationError('profile.intro')
+      throw new ConfigValidationError(`locales.${locale}.profile.intro`)
     }
     intro = value.intro.map((item) => item.trim())
   }
-  return { avatar, name, headline, intro }
+  return { ...result, intro } as LocalizedProfileConfig
 }
 
-/** 校验界面文案和隐私说明配置，喵~ */
-function parseUi(value: unknown): UiConfig {
-  if (!isRecord(value)) throw new ConfigValidationError('ui')
+/** 校验本地化界面文案与隐私地址，喵~ */
+function parseUi(value: unknown, locale: SupportedLocale): UiConfig {
+  if (!isRecord(value)) throw new ConfigValidationError(`locales.${locale}.ui`)
   const keys = [
     'channelsTitle',
     'configError',
@@ -90,44 +129,134 @@ function parseUi(value: unknown): UiConfig {
     'privacyNotice',
     'privacyLinkLabel',
     'privacyPolicyUrl',
+    'languageSwitcherLabel',
   ] as const
   const result = Object.fromEntries(keys.map((key) => [key, readRequiredString(value, key)]))
-  if (Object.values(result).some((item) => !item)) throw new ConfigValidationError('ui.fields')
-  if (!isPublicWebUrl(result.privacyPolicyUrl!)) throw new ConfigValidationError('ui.privacyPolicyUrl')
+  if (Object.values(result).some((item) => !item)) throw new ConfigValidationError(`locales.${locale}.ui.fields`)
+  if (!isPublicWebUrl(result.privacyPolicyUrl!)) {
+    throw new ConfigValidationError(`locales.${locale}.ui.privacyPolicyUrl`)
+  }
   return result as unknown as UiConfig
 }
 
-/** 校验单个赞赏渠道配置，喵~ */
-function parseChannel(value: unknown, index: number): RewardChannel {
-  if (!isRecord(value)) throw new ConfigValidationError(`channels.${index}`)
-  const id = readRequiredString(value, 'id')
+/** 校验单个渠道的本地化文案，喵~ */
+function parseLocalizedChannel(value: unknown, locale: SupportedLocale, id: string): LocalizedRewardChannel {
+  if (!isRecord(value)) throw new ConfigValidationError(`locales.${locale}.channels.${id}`)
   const name = readRequiredString(value, 'name')
-  const qrImage = readRequiredString(value, 'qrImage')
   const alt = readRequiredString(value, 'alt')
   const description = readOptionalString(value, 'description')
-  if (!id || !name || !qrImage || !alt) throw new ConfigValidationError(`channels.${index}.fields`)
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new ConfigValidationError(`channels.${index}.id`)
-  if (!isSafeAssetPath(qrImage)) throw new ConfigValidationError(`channels.${index}.qrImage`)
+  if (!name || !alt) throw new ConfigValidationError(`locales.${locale}.channels.${id}.fields`)
   if (value.description !== undefined && typeof value.description !== 'string') {
-    throw new ConfigValidationError(`channels.${index}.description`)
+    throw new ConfigValidationError(`locales.${locale}.channels.${id}.description`)
   }
-  return { id, name, qrImage, alt, description }
+  return { name, alt, description }
 }
 
-/** 将未知 JSON 数据解析为经过校验的赞赏页配置，喵~ */
+/** 校验单种语言的全部页面内容，喵~ */
+function parseLocalizedContent(
+  value: unknown,
+  locale: SupportedLocale,
+  channelIds: string[],
+  hasProfile: boolean,
+): LocalizedPageContent {
+  if (!isRecord(value)) throw new ConfigValidationError(`locales.${locale}`)
+  if (!isRecord(value.meta)) throw new ConfigValidationError(`locales.${locale}.meta`)
+  const title = readRequiredString(value.meta, 'title')
+  const description = readRequiredString(value.meta, 'description')
+  if (!title || !description) throw new ConfigValidationError(`locales.${locale}.meta.fields`)
+
+  const profile = parseLocalizedProfile(value.profile, locale)
+  if (hasProfile !== Boolean(profile)) throw new ConfigValidationError(`locales.${locale}.profile.presence`)
+
+  if (!isRecord(value.channels)) throw new ConfigValidationError(`locales.${locale}.channels`)
+  const localizedChannels = value.channels
+  const translatedIds = Object.keys(localizedChannels)
+  if (translatedIds.length !== channelIds.length || translatedIds.some((id) => !channelIds.includes(id))) {
+    throw new ConfigValidationError(`locales.${locale}.channels.ids`)
+  }
+  const channels = Object.fromEntries(
+    channelIds.map((id) => [id, parseLocalizedChannel(localizedChannels[id], locale, id)]),
+  )
+
+  return {
+    meta: { title, description },
+    profile,
+    ui: parseUi(value.ui, locale),
+    channels,
+  }
+}
+
+/** 保证可选本地化字段不会只在部分语言中缺失，喵~ */
+function validateOptionalFieldParity(locales: Record<SupportedLocale, LocalizedPageContent>, channelIds: string[]): void {
+  const [firstLocale, ...otherLocales] = SUPPORTED_LOCALES
+  const firstProfile = locales[firstLocale].profile
+  for (const locale of otherLocales) {
+    const profile = locales[locale].profile
+    for (const key of ['name', 'headline', 'intro', 'avatarAlt'] as const) {
+      if (Boolean(firstProfile?.[key]) !== Boolean(profile?.[key])) {
+        throw new ConfigValidationError(`locales.${locale}.profile.${key}.parity`)
+      }
+    }
+    for (const id of channelIds) {
+      if (Boolean(locales[firstLocale].channels[id]?.description) !== Boolean(locales[locale].channels[id]?.description)) {
+        throw new ConfigValidationError(`locales.${locale}.channels.${id}.description.parity`)
+      }
+    }
+  }
+}
+
+/** 将未知 JSON 数据解析为经过校验的双语赞赏页配置，喵~ */
 export function parseAppConfig(value: unknown): AppConfig {
   if (!isRecord(value)) throw new ConfigValidationError('root')
   if (!Array.isArray(value.channels)) throw new ConfigValidationError('channels')
 
-  const channels = value.channels.map(parseChannel)
-  const ids = channels.map((channel) => channel.id)
-  if (new Set(ids).size !== ids.length) throw new ConfigValidationError('channels.duplicateId')
+  const channels = value.channels.map(parseSharedChannel)
+  const channelIds = channels.map((channel) => channel.id)
+  if (new Set(channelIds).size !== channelIds.length) throw new ConfigValidationError('channels.duplicateId')
+
+  const profile = parseSharedProfile(value.profile)
+  if (!isRecord(value.locales)) throw new ConfigValidationError('locales')
+  const localizedConfigs = value.locales
+  const configuredLocales = Object.keys(localizedConfigs)
+  if (
+    configuredLocales.length !== SUPPORTED_LOCALES.length
+    || configuredLocales.some((locale) => !SUPPORTED_LOCALES.includes(locale as SupportedLocale))
+  ) {
+    throw new ConfigValidationError('locales.keys')
+  }
+
+  const locales = Object.fromEntries(SUPPORTED_LOCALES.map((locale) => [
+    locale,
+    parseLocalizedContent(localizedConfigs[locale], locale, channelIds, profile !== undefined),
+  ])) as Record<SupportedLocale, LocalizedPageContent>
+  validateOptionalFieldParity(locales, channelIds)
+
+  if (profile?.avatar) {
+    for (const locale of SUPPORTED_LOCALES) {
+      if (!locales[locale].profile?.avatarAlt) {
+        throw new ConfigValidationError(`locales.${locale}.profile.avatarAlt`)
+      }
+    }
+  }
 
   return {
-    meta: parseMeta(value.meta),
-    profile: parseProfile(value.profile),
-    ui: parseUi(value.ui),
+    defaultLocale: parseLocale(value.defaultLocale, 'defaultLocale'),
+    socialLocale: parseLocale(value.socialLocale, 'socialLocale'),
+    meta: parseSharedMeta(value.meta),
+    profile,
     channels,
+    locales,
+  }
+}
+
+/** 合并共享结构和指定语言内容，生成可直接渲染的配置，喵~ */
+export function resolveAppConfig(config: AppConfig, locale: SupportedLocale): ResolvedAppConfig {
+  const localized = config.locales[locale]
+  return {
+    meta: { ...config.meta, ...localized.meta },
+    profile: config.profile && localized.profile ? { ...config.profile, ...localized.profile } : undefined,
+    ui: localized.ui,
+    channels: config.channels.map((channel) => ({ ...channel, ...localized.channels[channel.id]! })),
   }
 }
 

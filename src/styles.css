@@ -63,6 +63,41 @@ a {
   padding: var(--page-padding);
 }
 
+.language-switcher {
+  display: flex;
+  width: max-content;
+  margin: 0 0 28px auto;
+  padding: 3px;
+  background: rgba(118, 118, 128, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.035);
+  border-radius: 11px;
+}
+
+.language-switcher__option {
+  min-height: 30px;
+  padding: 5px 11px;
+  color: #6e6e73;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.language-switcher__option--active {
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.language-switcher__option:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
 .profile {
   max-width: 760px;
   margin: 0 auto clamp(44px, 7vw, 76px);
@@ -250,6 +285,10 @@ body[data-mode="embed"] .page-shell {
   padding: 16px;
 }
 
+body[data-mode="embed"] .language-switcher {
+  margin-bottom: 18px;
+}
+
 body[data-mode="embed"] .profile {
   margin-bottom: 32px;
 }
@@ -290,6 +329,10 @@ body[data-mode="embed"] .channel-card {
 
   .profile {
     margin-bottom: 42px;
+  }
+
+  .language-switcher {
+    margin-bottom: 22px;
   }
 
   .profile__avatar {

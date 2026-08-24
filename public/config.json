@@ -1,48 +1,96 @@
 {
+  "defaultLocale": "zh-CN",
+  "socialLocale": "en",
   "meta": {
-    "title": "Wayne 的个人赞赏页",
-    "description": "感谢你的支持，让创作与分享继续发生。",
     "canonicalUrl": "https://reward.waynegong.cn/",
     "shareImage": "/assets/reward-codes-social-card.png"
   },
   "profile": {
-    "avatar": "",
-    "name": "Wayne",
-    "headline": "",
-    "intro": [
-      "你好，我是 Wayne，欢迎通过下方任一方式支持我。每一份心意都会被认真珍藏。"
-    ]
-  },
-  "ui": {
-    "channelsTitle": "选择赞赏方式",
-    "configError": "暂时无法加载赞赏信息，请稍后再试。",
-    "noChannels": "当前链接没有可展示的赞赏方式。",
-    "imageError": "二维码暂时无法显示",
-    "privacyNotice": "本站使用 Google Analytics 收集匿名访问数据。",
-    "privacyLinkLabel": "了解 Google 隐私政策",
-    "privacyPolicyUrl": "https://policies.google.com/privacy"
+    "avatar": ""
   },
   "channels": [
-    {
-      "id": "wechat",
-      "name": "微信赞赏",
-      "qrImage": "/assets/wechat-reward-code.jpg",
-      "alt": "Wayne 的微信赞赏码",
-      "description": "打开微信扫一扫"
+    { "id": "wechat", "qrImage": "/assets/wechat-reward-code.jpg" },
+    { "id": "alipay", "qrImage": "/assets/alipay-reward-code.jpg" },
+    { "id": "buymeacoffee", "qrImage": "/assets/buy-me-a-coffee-reward-code.png" }
+  ],
+  "locales": {
+    "zh-CN": {
+      "meta": {
+        "title": "Wayne 的个人赞赏页",
+        "description": "感谢你的支持，让创作与分享继续发生。"
+      },
+      "profile": {
+        "name": "Wayne",
+        "headline": "",
+        "intro": ["你好，我是 Wayne，欢迎通过下方任一方式支持我。每一份心意都会被认真珍藏。"],
+        "avatarAlt": "Wayne 的头像"
+      },
+      "ui": {
+        "channelsTitle": "选择赞赏方式",
+        "configError": "暂时无法加载赞赏信息，请稍后再试。",
+        "noChannels": "当前链接没有可展示的赞赏方式。",
+        "imageError": "二维码暂时无法显示",
+        "privacyNotice": "本站使用 Google Analytics 收集匿名访问数据。",
+        "privacyLinkLabel": "了解 Google 隐私政策",
+        "privacyPolicyUrl": "https://policies.google.com/privacy?hl=zh-CN",
+        "languageSwitcherLabel": "选择页面语言"
+      },
+      "channels": {
+        "wechat": {
+          "name": "微信赞赏",
+          "alt": "Wayne 的微信赞赏码",
+          "description": "打开微信扫一扫"
+        },
+        "alipay": {
+          "name": "支付宝",
+          "alt": "Wayne 的支付宝收款码",
+          "description": "打开支付宝扫一扫"
+        },
+        "buymeacoffee": {
+          "name": "Buy Me a Coffee",
+          "alt": "Wayne 的 Buy Me a Coffee 二维码",
+          "description": "扫码请我喝杯咖啡"
+        }
+      }
     },
-    {
-      "id": "alipay",
-      "name": "支付宝",
-      "qrImage": "/assets/alipay-reward-code.jpg",
-      "alt": "Wayne 的支付宝收款码",
-      "description": "打开支付宝扫一扫"
-    },
-    {
-      "id": "buymeacoffee",
-      "name": "Buy Me a Coffee",
-      "qrImage": "/assets/buy-me-a-coffee-reward-code.png",
-      "alt": "Wayne 的 Buy Me a Coffee 二维码",
-      "description": "Scan to buy me a coffee"
+    "en": {
+      "meta": {
+        "title": "Wayne’s Appreciation Page",
+        "description": "Thank you for your support—it helps me keep creating and sharing."
+      },
+      "profile": {
+        "name": "Wayne",
+        "headline": "",
+        "intro": ["Hi, I’m Wayne. If you’d like to support me, choose any option below. Every contribution is deeply appreciated."],
+        "avatarAlt": "Wayne’s avatar"
+      },
+      "ui": {
+        "channelsTitle": "Choose a way to support",
+        "configError": "Reward information is temporarily unavailable. Please try again later.",
+        "noChannels": "There are no reward options available for this link.",
+        "imageError": "The QR code is temporarily unavailable",
+        "privacyNotice": "This site uses Google Analytics to collect anonymous usage data.",
+        "privacyLinkLabel": "Learn about Google’s Privacy Policy",
+        "privacyPolicyUrl": "https://policies.google.com/privacy?hl=en",
+        "languageSwitcherLabel": "Choose page language"
+      },
+      "channels": {
+        "wechat": {
+          "name": "WeChat Reward",
+          "alt": "Wayne’s WeChat reward QR code",
+          "description": "Scan with WeChat"
+        },
+        "alipay": {
+          "name": "Alipay",
+          "alt": "Wayne’s Alipay QR code",
+          "description": "Scan with Alipay"
+        },
+        "buymeacoffee": {
+          "name": "Buy Me a Coffee",
+          "alt": "Wayne’s Buy Me a Coffee QR code",
+          "description": "Scan to buy me a coffee"
+        }
+      }
     }
-  ]
+  }
 }

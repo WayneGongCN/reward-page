@@ -1,4 +1,4 @@
-import type { PageMode } from './types'
+import type { PageMode, SupportedLocale } from './types'
 
 type AnalyticsStorageConsent = 'granted' | 'denied'
 type ConfigErrorStage = 'fetch' | 'parse' | 'render'
@@ -8,6 +8,11 @@ interface AnalyticsEventMap {
     display_mode: PageMode
     intro_visible: boolean
     visible_channels: string
+    content_language: SupportedLocale
+  }
+  reward_language_change: {
+    previous_language: SupportedLocale
+    content_language: SupportedLocale
   }
   reward_config_error: {
     stage: ConfigErrorStage

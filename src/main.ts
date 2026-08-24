@@ -1,9 +1,20 @@
 import './styles.css'
 import { initializeAnalytics, trackAnalyticsEvent } from './analytics'
-import { loadAppConfig } from './config'
+import { loadAppConfig, resolveAppConfig } from './config'
 import { setupIframeAutoResize } from './iframe-resize'
-import type { AppConfig, PageOptions, RewardChannel } from './types'
+import { detectLocale, persistLocale } from './localization'
+import type { PageOptions, ResolvedAppConfig, RewardChannel, SupportedLocale } from './types'
 import { parsePageOptions } from './url-options'
+
+const LOCALE_LABELS: Record<SupportedLocale, string> = {
+  'zh-CN': '简体中文',
+  en: 'English',
+}
+
+const FATAL_ERROR_MESSAGES: Record<SupportedLocale, string> = {
+  'zh-CN': '暂时无法加载赞赏信息，请稍后再试。',
+  en: 'Reward information is temporarily unavailable. Please try again later.',
+}
 
 /** 获取初始化 HTML 中唯一的应用根节点，喵~ */
 function getAppRoot(): HTMLDivElement {
@@ -13,8 +24,6 @@ function getAppRoot(): HTMLDivElement {
 }
 
 const app = getAppRoot()
-
-const analyticsActive = initializeAnalytics()
 setupIframeAutoResize()
 
 /** 创建带有可选类名和文本的元素，喵~ */
@@ -29,10 +38,24 @@ function createElement<K extends keyof HTMLElementTagNameMap>(
   return element
 }
 
-/** 同步运行时标题与基础元信息，便于开发环境和客户端导航读取，喵~ */
-function syncRuntimeMetadata(config: AppConfig): void {
+/** 更新指定选择器匹配的元信息内容，喵~ */
+function setMetaContent(selector: string, content: string): void {
+  document.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', content)
+}
+
+/** 同步运行时语言、标题和完整分享元信息，喵~ */
+function syncRuntimeMetadata(config: ResolvedAppConfig, locale: SupportedLocale): void {
+  const shareImage = new URL(config.meta.shareImage, config.meta.canonicalUrl).toString()
+  document.documentElement.lang = locale
   document.title = config.meta.title
-  document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', config.meta.description)
+  setMetaContent('meta[name="description"]', config.meta.description)
+  setMetaContent('meta[property="og:title"]', config.meta.title)
+  setMetaContent('meta[property="og:description"]', config.meta.description)
+  setMetaContent('meta[property="og:url"]', config.meta.canonicalUrl)
+  setMetaContent('meta[property="og:image"]', shareImage)
+  setMetaContent('meta[name="twitter:title"]', config.meta.title)
+  setMetaContent('meta[name="twitter:description"]', config.meta.description)
+  setMetaContent('meta[name="twitter:image"]', shareImage)
   document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', config.meta.canonicalUrl)
 }
 
@@ -46,7 +69,7 @@ function notifyAfterImageSettles(image: HTMLImageElement): void {
 }
 
 /** 渲染可选的个人资料与简介区域，喵~ */
-function renderProfile(config: AppConfig): HTMLElement | undefined {
+function renderProfile(config: ResolvedAppConfig): HTMLElement | undefined {
   const profile = config.profile
   if (!profile) return undefined
   const section = createElement('header', 'profile')
@@ -54,7 +77,7 @@ function renderProfile(config: AppConfig): HTMLElement | undefined {
   if (profile.avatar) {
     const avatar = createElement('img', 'profile__avatar')
     avatar.src = profile.avatar
-    avatar.alt = profile.name ? `${profile.name}的头像` : ''
+    avatar.alt = profile.avatarAlt ?? ''
     avatar.width = 104
     avatar.height = 104
     avatar.addEventListener('error', () => avatar.remove(), { once: true })
@@ -73,8 +96,8 @@ function renderProfile(config: AppConfig): HTMLElement | undefined {
   return section.childElementCount ? section : undefined
 }
 
-/** 渲染单个二维码卡片，并在资源失败时显示配置文案，喵~ */
-function renderChannel(channel: RewardChannel, config: AppConfig): HTMLElement {
+/** 渲染单个二维码卡片，并在资源失败时显示本地化文案，喵~ */
+function renderChannel(channel: RewardChannel, config: ResolvedAppConfig): HTMLElement {
   const article = createElement('article', 'channel-card')
   article.dataset.channelId = channel.id
   const heading = createElement('h3', 'channel-card__title', channel.name)
@@ -98,7 +121,7 @@ function renderChannel(channel: RewardChannel, config: AppConfig): HTMLElement {
 }
 
 /** 渲染 GA 启用时必须展示的精简隐私说明，喵~ */
-function renderPrivacy(config: AppConfig): HTMLElement {
+function renderPrivacy(config: ResolvedAppConfig): HTMLElement {
   const footer = createElement('footer', 'privacy-note')
   const text = createElement('span', undefined, config.ui.privacyNotice)
   const link = createElement('a', 'privacy-note__link', config.ui.privacyLinkLabel)
@@ -109,12 +132,40 @@ function renderPrivacy(config: AppConfig): HTMLElement {
   return footer
 }
 
-/** 按配置与 URL 参数渲染完整赞赏页，喵~ */
-function renderPage(config: AppConfig, options: PageOptions): void {
+/** 渲染双语切换器，并暴露无刷新切换回调，喵~ */
+function renderLanguageSwitcher(
+  locale: SupportedLocale,
+  label: string,
+  onLocaleChange: (locale: SupportedLocale) => void,
+): HTMLElement {
+  const wrapper = createElement('div', 'language-switcher')
+  wrapper.setAttribute('role', 'group')
+  wrapper.setAttribute('aria-label', label)
+  for (const candidate of ['zh-CN', 'en'] as const) {
+    const button = createElement('button', 'language-switcher__option', LOCALE_LABELS[candidate])
+    button.type = 'button'
+    button.lang = candidate
+    button.setAttribute('aria-pressed', String(candidate === locale))
+    if (candidate === locale) button.classList.add('language-switcher__option--active')
+    button.addEventListener('click', () => onLocaleChange(candidate))
+    wrapper.append(button)
+  }
+  return wrapper
+}
+
+/** 按配置、语言与 URL 参数渲染完整赞赏页，喵~ */
+function renderPage(
+  config: ResolvedAppConfig,
+  options: PageOptions,
+  locale: SupportedLocale,
+  analyticsActive: boolean,
+  onLocaleChange: (locale: SupportedLocale) => void,
+): void {
   document.documentElement.dataset.mode = options.mode
   document.body.dataset.mode = options.mode
   app.setAttribute('aria-busy', 'false')
   const main = createElement('main', 'page-shell')
+  main.append(renderLanguageSwitcher(locale, config.ui.languageSwitcherLabel, onLocaleChange))
 
   if (options.introVisible) {
     const profile = renderProfile(config)
@@ -138,16 +189,11 @@ function renderPage(config: AppConfig, options: PageOptions): void {
   main.append(section)
   if (analyticsActive) main.append(renderPrivacy(config))
   app.replaceChildren(main)
-
-  trackAnalyticsEvent('reward_page_view', {
-    display_mode: options.mode,
-    intro_visible: options.introVisible,
-    visible_channels: options.visibleChannelIds.join(','),
-  })
 }
 
-/** 渲染配置无法使用时的稳定降级页面，喵~ */
-function renderFatalError(message: string): void {
+/** 渲染配置无法使用时的稳定本地化降级页面，喵~ */
+function renderFatalError(message: string, locale: SupportedLocale): void {
+  document.documentElement.lang = locale
   document.documentElement.dataset.mode = 'full'
   document.body.dataset.mode = 'full'
   app.setAttribute('aria-busy', 'false')
@@ -158,21 +204,52 @@ function renderFatalError(message: string): void {
   app.replaceChildren(main)
 }
 
-/** 加载配置并启动页面，任何异常都不会阻断静态错误态，喵~ */
+/** 加载双语配置并启动页面，任何异常都不会阻断静态错误态，喵~ */
 function start(): void {
+  let currentLocale = detectLocale('zh-CN')
   try {
     const config = loadAppConfig()
-    syncRuntimeMetadata(config)
+    currentLocale = detectLocale(config.defaultLocale)
     const options = parsePageOptions(window.location.search, config.channels.map((channel) => channel.id))
+    const initialResolvedConfig = resolveAppConfig(config, currentLocale)
+    syncRuntimeMetadata(initialResolvedConfig, currentLocale)
+    const analyticsActive = initializeAnalytics()
+
+    const changeLocale = (nextLocale: SupportedLocale): void => {
+      if (nextLocale === currentLocale) return
+      const previousLocale = currentLocale
+      currentLocale = nextLocale
+      persistLocale(nextLocale)
+      try {
+        const resolvedConfig = resolveAppConfig(config, nextLocale)
+        syncRuntimeMetadata(resolvedConfig, nextLocale)
+        renderPage(resolvedConfig, options, nextLocale, analyticsActive, changeLocale)
+        trackAnalyticsEvent('reward_language_change', {
+          previous_language: previousLocale,
+          content_language: nextLocale,
+        })
+      } catch {
+        trackAnalyticsEvent('reward_config_error', { stage: 'render' })
+        renderFatalError(config.locales[nextLocale].ui.configError, nextLocale)
+      }
+    }
+
     try {
-      renderPage(config, options)
+      renderPage(initialResolvedConfig, options, currentLocale, analyticsActive, changeLocale)
+      trackAnalyticsEvent('reward_page_view', {
+        display_mode: options.mode,
+        intro_visible: options.introVisible,
+        visible_channels: options.visibleChannelIds.join(','),
+        content_language: currentLocale,
+      })
     } catch {
       trackAnalyticsEvent('reward_config_error', { stage: 'render' })
-      renderFatalError(config.ui.configError)
+      renderFatalError(initialResolvedConfig.ui.configError, currentLocale)
     }
   } catch {
-    trackAnalyticsEvent('reward_config_error', { stage: 'parse' })
-    renderFatalError('暂时无法加载赞赏信息，请稍后再试。')
+    const analyticsActive = initializeAnalytics()
+    if (analyticsActive) trackAnalyticsEvent('reward_config_error', { stage: 'parse' })
+    renderFatalError(FATAL_ERROR_MESSAGES[currentLocale], currentLocale)
   }
 }
 

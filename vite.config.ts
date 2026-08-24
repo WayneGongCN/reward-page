@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
-import { parseAppConfig } from './src/config'
+import { parseAppConfig, resolveAppConfig } from './src/config'
 import type { AppConfig } from './src/types'
 
 const configPath = fileURLToPath(new URL('./public/config.json', import.meta.url))
@@ -55,6 +55,7 @@ function fingerprintConfig(config: AppConfig): AppConfig {
 
 /** 从公开配置生成开发与生产环境共用的社媒元信息，喵~ */
 function configDrivenMetadata(config: AppConfig): Plugin {
+  const socialConfig = resolveAppConfig(config, config.socialLocale)
   return {
     name: 'reward-page-config-driven-metadata',
     configureServer(server) {
@@ -67,10 +68,12 @@ function configDrivenMetadata(config: AppConfig): Plugin {
     },
     transformIndexHtml(html) {
       const replacements: Record<string, string> = {
-        __META_TITLE__: config.meta.title,
-        __META_DESCRIPTION__: config.meta.description,
-        __META_CANONICAL_URL__: config.meta.canonicalUrl,
-        __META_SHARE_IMAGE__: resolveShareImage(config.meta.canonicalUrl, config.meta.shareImage),
+        __HTML_LANG__: config.socialLocale,
+        __LOADING_LABEL__: config.socialLocale === 'en' ? 'Loading' : '正在加载',
+        __META_TITLE__: socialConfig.meta.title,
+        __META_DESCRIPTION__: socialConfig.meta.description,
+        __META_CANONICAL_URL__: socialConfig.meta.canonicalUrl,
+        __META_SHARE_IMAGE__: resolveShareImage(socialConfig.meta.canonicalUrl, socialConfig.meta.shareImage),
       }
 
       const metadataHtml = Object.entries(replacements).reduce(
