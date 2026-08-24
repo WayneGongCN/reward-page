@@ -10,7 +10,7 @@
 - 支持完整页面和透明紧凑的 iframe 模式。
 - 支持按 URL 参数隐藏简介或筛选赞赏渠道。
 - 二维码渠道可选展示并复制公开钱包地址。
-- 基于 GitHub Issues 的公开评论区，可按页面模式或 URL 参数开关。
+- 基于 GitHub Issues 的公开留言 Tab，首次切换时才加载评论组件。
 - iframe 内容高度变化时通过 `postMessage` 通知父页面。
 - 可选 GA4 匿名访问统计，仅在 Vercel Production 发布时启用。
 - GitHub Actions 质量门禁与 Vercel Git 自动部署。
@@ -62,7 +62,9 @@ Vite 会在启动和构建时校验并注入静态配置，同时为图片地址
 
 赞赏码会随公开网站和公开仓库一起发布，不要把任何账号密码、令牌或私密凭据写入 JSON。
 
-### BTC/USDT 钱包渠道
+### 虚拟币钱包渠道
+
+生产配置当前已启用 `base` 渠道，用于接收 Base 网络上的 USDC，并展示二维码与可复制公开地址。页面会同时标明资产和网络，付款方必须选择 Base 网络发送 USDC。
 
 BTC、USDT 与其他赞赏方式使用相同的二维码渠道模型，不引入链上 SDK 或地址格式判断。真实素材到位后，可在共享渠道末尾追加：
 
@@ -101,7 +103,7 @@ BTC、USDT 与其他赞赏方式使用相同的二维码渠道模型，不引入
 | --- | --- | --- |
 | `mode` | `full` / `embed` | 默认 `full`；`embed` 使用透明紧凑样式并默认隐藏简介 |
 | `intro` | `1` / `0` | 覆盖模式默认值，控制个人信息区 |
-| `comments` | `1` / `0` | 控制评论区；`full` 默认开启，`embed` 默认关闭 |
+| `comments` | `1` / `0` | 控制留言 Tab 入口；`full` 默认开启，`embed` 默认关闭 |
 | `channels` | 逗号分隔的渠道 ID | 仅展示指定渠道；空值隐藏全部渠道 |
 
 示例：
@@ -115,7 +117,7 @@ BTC、USDT 与其他赞赏方式使用相同的二维码渠道模型，不引入
 
 ## GitHub Issues 评论
 
-评论区使用 [utterances](https://utteranc.es/)，评论数据公开存储在 `WayneGongCN/reward-page` 的 GitHub Issues 中。页面按 `pathname` 查找 Issue，因此语言、`mode`、`intro`、`comments` 和 `channels` 等查询参数不会创建不同的评论线程；首次发表评论时 utterances 会自动创建对应 Issue。
+评论区使用 [utterances](https://utteranc.es/)，评论数据公开存储在 `WayneGongCN/reward-page` 的 GitHub Issues 中。完整页默认显示“赞赏 / 留言”双 Tab 并停留在赞赏内容；只有首次切到留言 Tab 时才加载 utterances，切回赞赏不会重复加载。页面按 `pathname` 查找 Issue，因此语言、`mode`、`intro`、`comments` 和 `channels` 等查询参数不会创建不同的评论线程；首次发表评论时 utterances 会自动创建对应 Issue。
 
 仓库侧首次启用步骤：
 
@@ -126,7 +128,7 @@ BTC、USDT 与其他赞赏方式使用相同的二维码渠道模型，不引入
 
 评论者必须登录并授权 GitHub，首期不支持匿名评论。utterances 内部编辑器使用英文，本站只负责评论标题、公开性说明、加载状态和错误态的中英文切换。本地与 Vercel Preview 可以加载评论，但会因来源限制而无法提交。
 
-前端不保存 GitHub OAuth Client Secret、访问令牌、评论内容或用户身份。第三方脚本加载失败时只显示评论错误态，不会阻断赞赏渠道；评论 iframe 高度变化会被现有页面尺寸监听捕获。
+前端不保存 GitHub OAuth Client Secret、访问令牌、评论内容或用户身份。第三方脚本加载失败时只在留言 Tab 显示错误态，不会阻断赞赏渠道；留言面板显示时的评论 iframe 高度变化会被现有页面尺寸监听捕获。
 
 ## iframe 接入
 
@@ -172,7 +174,7 @@ window.addEventListener('message', (event) => {
 - 拒绝广告存储、广告用户数据和广告个性化。
 - 关闭 Google Signals 与广告个性化信号。
 - 不设置用户 ID，不发送二维码内容、简介、完整 URL 或异常原文。
-- 自动发送 `page_view`，并发送 `reward_page_view` 与匿名的 `reward_config_error`；页面浏览事件只附带评论区是否展示，不包含评论内容、Issue 编号或 GitHub 身份。
+- 自动发送 `page_view`，并发送 `reward_page_view` 与匿名的 `reward_config_error`；页面浏览事件只附带留言 Tab 是否可用，不包含评论内容、Issue 编号或 GitHub 身份。
 
 环境变量：
 

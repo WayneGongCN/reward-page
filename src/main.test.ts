@@ -78,11 +78,18 @@ describe('赞赏页多语言入口', () => {
     expect(document.documentElement.lang).toBe('en')
     expect(document.title).toBe('Wayne’s Appreciation Page')
     expect(document.querySelector('.channels__title')?.textContent).toBe('Choose a way to support')
-    expect(document.querySelector('.comments__title')?.textContent).toBe('Comments')
-    expect(document.querySelectorAll('.comments script[src="https://utteranc.es/client.js"]')).toHaveLength(1)
+    expect(document.querySelector('[role="tablist"]')?.getAttribute('aria-label'))
+      .toBe('Switch between support and comments')
+    expect(document.querySelector('[data-page-tab="reward"]')?.getAttribute('aria-selected')).toBe('true')
+    expect(document.querySelector('.comments')).toBeNull()
+    expect(document.querySelectorAll('script[src="https://utteranc.es/client.js"]')).toHaveLength(0)
     expect(document.querySelector<HTMLImageElement>('[data-channel-id="wechat"] img')?.alt)
       .toBe('Wayne’s WeChat reward QR code')
     expect(document.querySelector('[data-channel-id="wechat"] .channel-card__copy')).toBeNull()
+    expect(document.querySelector('[data-channel-id="base"] .channel-card__address')?.textContent)
+      .toBe('0xEF787423A25713C0c979d4F5323FB05b2C2b5D38')
+    expect(document.querySelector('[data-channel-id="base"] .channel-card__description')?.textContent)
+      .toBe('USDC on the Base network only')
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute('content'))
       .toBe('Wayne’s Appreciation Page')
     expect(document.querySelector('.language-switcher [lang="en"]')?.getAttribute('aria-pressed')).toBe('true')
@@ -93,15 +100,51 @@ describe('赞赏页多语言入口', () => {
     expect(document.documentElement.lang).toBe('zh-CN')
     expect(document.title).toBe('Wayne 的个人赞赏页')
     expect(document.querySelector('.channels__title')?.textContent).toBe('选择赞赏方式')
-    expect(document.querySelector('.comments__title')?.textContent).toBe('留言')
-    expect(document.querySelector('.comments__description')?.textContent)
-      .toBe('评论将公开保存到 GitHub Issues，登录 GitHub 后即可参与。')
-    expect(document.querySelectorAll('.comments script[src="https://utteranc.es/client.js"]')).toHaveLength(1)
+    expect(document.querySelector('[data-page-tab="reward"]')?.textContent).toBe('赞赏')
+    expect(document.querySelector('[data-page-tab="comments"]')?.textContent).toBe('留言')
+    expect(document.querySelector('.comments')).toBeNull()
     expect(document.querySelector<HTMLImageElement>('[data-channel-id="wechat"] img')?.alt)
       .toBe('Wayne 的微信赞赏码')
     expect(document.querySelector('meta[name="twitter:description"]')?.getAttribute('content'))
       .toBe('感谢你的支持，让创作与分享继续发生。')
     expect(document.querySelector('.language-switcher [lang="zh-CN"]')?.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('首次切到留言 Tab 时才加载评论，并在语言切换后保留当前 Tab', async () => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en')
+    await import('./main')
+
+    const commentsTab = document.querySelector<HTMLButtonElement>('[data-page-tab="comments"]')!
+    commentsTab.click()
+    expect(commentsTab.getAttribute('aria-selected')).toBe('true')
+    expect(document.querySelector<HTMLElement>('#page-panel-reward')?.hidden).toBe(true)
+    expect(document.querySelector<HTMLElement>('#page-panel-comments')?.hidden).toBe(false)
+    expect(document.querySelector('.comments__title')?.textContent).toBe('Join the conversation')
+    expect(document.querySelectorAll('.comments script[src="https://utteranc.es/client.js"]')).toHaveLength(1)
+
+    document.querySelector<HTMLButtonElement>('[lang="zh-CN"]')?.click()
+    expect(document.querySelector('[data-page-tab="comments"]')?.getAttribute('aria-selected')).toBe('true')
+    expect(document.querySelector<HTMLElement>('#page-panel-reward')?.hidden).toBe(true)
+    expect(document.querySelector('.comments__title')?.textContent).toBe('交流与留言')
+    expect(document.querySelector('.comments__description')?.textContent)
+      .toBe('评论将公开保存到 GitHub Issues，登录 GitHub 后即可参与。')
+    expect(document.querySelectorAll('.comments script[src="https://utteranc.es/client.js"]')).toHaveLength(1)
+  })
+
+  it('Tab 支持左右方向键切换并同步焦点与面板状态', async () => {
+    await import('./main')
+    const rewardTab = document.querySelector<HTMLButtonElement>('[data-page-tab="reward"]')!
+    const commentsTab = document.querySelector<HTMLButtonElement>('[data-page-tab="comments"]')!
+
+    rewardTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    expect(commentsTab.getAttribute('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(commentsTab)
+
+    commentsTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+    expect(rewardTab.getAttribute('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(rewardTab)
+    expect(document.querySelector<HTMLElement>('#page-panel-reward')?.hidden).toBe(false)
+    expect(document.querySelector<HTMLElement>('#page-panel-comments')?.hidden).toBe(true)
   })
 
   it('在嵌入模式中保留切换器并兼容简介隐藏和渠道筛选', async () => {
@@ -121,6 +164,9 @@ describe('赞赏页多语言入口', () => {
     window.history.replaceState({}, '', '/?mode=embed&comments=1')
     await import('./main')
 
+    expect(document.querySelector('.page-tabs')).not.toBeNull()
+    expect(document.querySelector('.comments')).toBeNull()
+    document.querySelector<HTMLButtonElement>('[data-page-tab="comments"]')?.click()
     const script = document.querySelector<HTMLScriptElement>('.comments script')
     expect(script?.getAttribute('repo')).toBe('WayneGongCN/reward-page')
     expect(script?.getAttribute('issue-term')).toBe('pathname')
@@ -132,6 +178,7 @@ describe('赞赏页多语言入口', () => {
     window.history.replaceState({}, '', '/?comments=0')
     await import('./main')
     expect(document.querySelector('.comments')).toBeNull()
+    expect(document.querySelector('.page-tabs')).toBeNull()
   })
 
   it('utterances 脚本失败时展示当前语言错误态且保留赞赏渠道', async () => {
@@ -140,10 +187,10 @@ describe('赞赏页多语言入口', () => {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en')
     await import('./main')
 
-    document.querySelector<HTMLScriptElement>('.comments script')?.dispatchEvent(new Event('error'))
+    document.querySelector<HTMLButtonElement>('[data-page-tab="comments"]')?.click()
     expect(document.querySelector('.comments__status')?.textContent)
       .toBe('Comments are temporarily unavailable. Please try again later.')
-    expect(document.querySelectorAll('.channel-card')).toHaveLength(3)
+    expect(document.querySelectorAll('.channel-card')).toHaveLength(publicConfig.channels.length)
   })
 
   it('在空渠道和图片失败场景展示当前语言文案', async () => {

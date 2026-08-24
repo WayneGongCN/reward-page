@@ -98,6 +98,42 @@ a {
   outline-offset: 2px;
 }
 
+.page-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 360px);
+  margin: 0 auto clamp(40px, 6vw, 58px);
+  padding: 4px;
+  background: rgba(118, 118, 128, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.045);
+  border-radius: 15px;
+}
+
+.page-tabs__tab {
+  min-height: 40px;
+  padding: 9px 18px;
+  color: #6e6e73;
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.page-tabs__tab--active {
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+}
+
+.page-tabs__tab:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
 .profile {
   max-width: 760px;
   margin: 0 auto clamp(44px, 7vw, 76px);
@@ -298,7 +334,7 @@ a {
 
 .comments {
   max-width: 760px;
-  margin: clamp(54px, 8vw, 86px) auto 0;
+  margin: 0 auto;
 }
 
 .comments__title {
@@ -396,6 +432,10 @@ body[data-mode="embed"] .language-switcher {
   margin-bottom: 18px;
 }
 
+body[data-mode="embed"] .page-tabs {
+  margin-bottom: 32px;
+}
+
 body[data-mode="embed"] .profile {
   margin-bottom: 32px;
 }
@@ -414,10 +454,6 @@ body[data-mode="embed"] .profile__name {
 body[data-mode="embed"] .channels__title {
   margin-bottom: 16px;
   font-size: clamp(22px, 3vw, 28px);
-}
-
-body[data-mode="embed"] .comments {
-  margin-top: 42px;
 }
 
 body[data-mode="embed"] .comments__description {
@@ -450,6 +486,10 @@ body[data-mode="embed"] .channel-card {
     margin-bottom: 22px;
   }
 
+  .page-tabs {
+    margin-bottom: 36px;
+  }
+
   .profile__avatar {
     width: 88px;
     height: 88px;
@@ -477,8 +517,13 @@ body[data-mode="embed"] .channel-card {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .initial-loader {
+  .initial-loader,
+  .page-tabs__tab {
     animation: none;
+    transition: none;
+  }
+
+  .initial-loader {
     border-top-color: rgba(0, 0, 0, 0.09);
   }
 }

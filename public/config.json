@@ -15,7 +15,12 @@
   "channels": [
     { "id": "wechat", "qrImage": "/assets/wechat-reward-code.jpg" },
     { "id": "alipay", "qrImage": "/assets/alipay-reward-code.jpg" },
-    { "id": "buymeacoffee", "qrImage": "/assets/buy-me-a-coffee-reward-code.png" }
+    { "id": "buymeacoffee", "qrImage": "/assets/buy-me-a-coffee-reward-code.png" },
+    {
+      "id": "base",
+      "qrImage": "/assets/base-reward-code.png",
+      "copyValue": "0xEF787423A25713C0c979d4F5323FB05b2C2b5D38"
+    }
   ],
   "locales": {
     "zh-CN": {
@@ -38,7 +43,10 @@
         "copyAddress": "复制地址",
         "copySuccess": "已复制",
         "copyFailure": "复制失败，请手动复制",
-        "commentsTitle": "留言",
+        "pageTabsLabel": "切换赞赏与留言内容",
+        "rewardTabLabel": "赞赏",
+        "commentsTabLabel": "留言",
+        "commentsTitle": "交流与留言",
         "commentsDescription": "评论将公开保存到 GitHub Issues，登录 GitHub 后即可参与。",
         "commentsLoading": "正在加载评论…",
         "commentsLoadError": "评论暂时无法加载，请稍后再试。",
@@ -62,6 +70,11 @@
           "name": "Buy Me a Coffee",
           "alt": "Wayne 的 Buy Me a Coffee 二维码",
           "description": "扫码请我喝杯咖啡"
+        },
+        "base": {
+          "name": "USDC · Base",
+          "alt": "Wayne 的 Base 网络 USDC 收款二维码",
+          "description": "仅接受 Base 网络上的 USDC"
         }
       }
     },
@@ -85,7 +98,10 @@
         "copyAddress": "Copy address",
         "copySuccess": "Copied",
         "copyFailure": "Copy failed. Please copy it manually.",
-        "commentsTitle": "Comments",
+        "pageTabsLabel": "Switch between support and comments",
+        "rewardTabLabel": "Support",
+        "commentsTabLabel": "Comments",
+        "commentsTitle": "Join the conversation",
         "commentsDescription": "Comments are public GitHub Issues. Sign in with GitHub to join the conversation.",
         "commentsLoading": "Loading comments…",
         "commentsLoadError": "Comments are temporarily unavailable. Please try again later.",
@@ -109,6 +125,11 @@
           "name": "Buy Me a Coffee",
           "alt": "Wayne’s Buy Me a Coffee QR code",
           "description": "Scan to buy me a coffee"
+        },
+        "base": {
+          "name": "USDC · Base",
+          "alt": "Wayne’s USDC payment QR code on Base",
+          "description": "USDC on the Base network only"
         }
       }
     }

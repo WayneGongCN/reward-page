@@ -17,6 +17,8 @@ const FATAL_ERROR_MESSAGES: Record<SupportedLocale, string> = {
   en: 'Reward information is temporarily unavailable. Please try again later.',
 }
 
+type PageTab = 'reward' | 'comments'
+
 /** 获取初始化 HTML 中唯一的应用根节点，喵~ */
 function getAppRoot(): HTMLDivElement {
   const root = document.querySelector<HTMLDivElement>('#app')
@@ -194,6 +196,73 @@ function renderComments(config: ResolvedAppConfig): HTMLElement {
   return section
 }
 
+/** 渲染默认展示的赞赏内容面板，喵~ */
+function renderRewardPanel(config: ResolvedAppConfig, options: PageOptions): HTMLElement {
+  const panel = createElement('div', 'page-panel page-panel--reward')
+  if (options.introVisible) {
+    const profile = renderProfile(config)
+    if (profile) panel.append(profile)
+  }
+
+  const section = createElement('section', 'channels')
+  section.setAttribute('aria-labelledby', 'channels-title')
+  const title = createElement('h2', 'channels__title', config.ui.channelsTitle)
+  title.id = 'channels-title'
+  section.append(title)
+  const visibleIdSet = new Set(options.visibleChannelIds)
+  const visibleChannels = config.channels.filter((channel) => visibleIdSet.has(channel.id))
+  if (visibleChannels.length) {
+    const grid = createElement('div', 'channels__grid')
+    for (const channel of visibleChannels) grid.append(renderChannel(channel, config))
+    section.append(grid)
+  } else {
+    section.append(createElement('p', 'empty-state', config.ui.noChannels))
+  }
+  panel.append(section)
+  return panel
+}
+
+/** 渲染支持键盘方向键切换的页面级 Tab 导航，喵~ */
+function renderPageTabs(
+  config: ResolvedAppConfig,
+  activeTab: PageTab,
+  onTabChange: (tab: PageTab) => void,
+): HTMLElement {
+  const tabList = createElement('div', 'page-tabs')
+  tabList.setAttribute('role', 'tablist')
+  tabList.setAttribute('aria-label', config.ui.pageTabsLabel)
+  const definitions: Array<{ id: PageTab; label: string }> = [
+    { id: 'reward', label: config.ui.rewardTabLabel },
+    { id: 'comments', label: config.ui.commentsTabLabel },
+  ]
+
+  for (const definition of definitions) {
+    const button = createElement('button', 'page-tabs__tab', definition.label)
+    button.type = 'button'
+    button.id = `page-tab-${definition.id}`
+    button.dataset.pageTab = definition.id
+    button.setAttribute('role', 'tab')
+    button.setAttribute('aria-controls', `page-panel-${definition.id}`)
+    button.setAttribute('aria-selected', String(definition.id === activeTab))
+    button.tabIndex = definition.id === activeTab ? 0 : -1
+    if (definition.id === activeTab) button.classList.add('page-tabs__tab--active')
+    button.addEventListener('click', () => onTabChange(definition.id))
+    button.addEventListener('keydown', (event) => {
+      const currentIndex = definitions.findIndex((item) => item.id === definition.id)
+      const nextIndex = event.key === 'ArrowRight'
+        ? (currentIndex + 1) % definitions.length
+        : event.key === 'ArrowLeft'
+          ? (currentIndex - 1 + definitions.length) % definitions.length
+          : undefined
+      if (nextIndex === undefined) return
+      event.preventDefault()
+      onTabChange(definitions[nextIndex]!.id)
+    })
+    tabList.append(button)
+  }
+  return tabList
+}
+
 /** 渲染双语切换器，并暴露无刷新切换回调，喵~ */
 function renderLanguageSwitcher(
   locale: SupportedLocale,
@@ -220,36 +289,47 @@ function renderPage(
   config: ResolvedAppConfig,
   options: PageOptions,
   locale: SupportedLocale,
+  activeTab: PageTab,
   analyticsActive: boolean,
   onLocaleChange: (locale: SupportedLocale) => void,
+  onActiveTabChange: (tab: PageTab) => void,
 ): void {
   document.documentElement.dataset.mode = options.mode
   document.body.dataset.mode = options.mode
   app.setAttribute('aria-busy', 'false')
   const main = createElement('main', 'page-shell')
   main.append(renderLanguageSwitcher(locale, config.ui.languageSwitcherLabel, onLocaleChange))
-
-  if (options.introVisible) {
-    const profile = renderProfile(config)
-    if (profile) main.append(profile)
-  }
-
-  const section = createElement('section', 'channels')
-  section.setAttribute('aria-labelledby', 'channels-title')
-  const title = createElement('h2', 'channels__title', config.ui.channelsTitle)
-  title.id = 'channels-title'
-  section.append(title)
-  const visibleIdSet = new Set(options.visibleChannelIds)
-  const visibleChannels = config.channels.filter((channel) => visibleIdSet.has(channel.id))
-  if (visibleChannels.length) {
-    const grid = createElement('div', 'channels__grid')
-    for (const channel of visibleChannels) grid.append(renderChannel(channel, config))
-    section.append(grid)
+  const rewardPanel = renderRewardPanel(config, options)
+  if (options.commentsVisible) {
+    rewardPanel.id = 'page-panel-reward'
+    rewardPanel.setAttribute('role', 'tabpanel')
+    rewardPanel.setAttribute('aria-labelledby', 'page-tab-reward')
+    const commentsPanel = createElement('div', 'page-panel page-panel--comments')
+    commentsPanel.id = 'page-panel-comments'
+    commentsPanel.setAttribute('role', 'tabpanel')
+    commentsPanel.setAttribute('aria-labelledby', 'page-tab-comments')
+    let tabList: HTMLElement
+    const activateTab = (nextTab: PageTab, notify: boolean): void => {
+      rewardPanel.hidden = nextTab !== 'reward'
+      commentsPanel.hidden = nextTab !== 'comments'
+      if (nextTab === 'comments' && !commentsPanel.childElementCount) {
+        commentsPanel.append(renderComments(config))
+      }
+      for (const button of tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
+        const selected = button.dataset.pageTab === nextTab
+        button.setAttribute('aria-selected', String(selected))
+        button.tabIndex = selected ? 0 : -1
+        button.classList.toggle('page-tabs__tab--active', selected)
+        if (selected && notify) button.focus()
+      }
+      if (notify) onActiveTabChange(nextTab)
+    }
+    tabList = renderPageTabs(config, activeTab, (nextTab) => activateTab(nextTab, true))
+    main.append(tabList, rewardPanel, commentsPanel)
+    activateTab(activeTab, false)
   } else {
-    section.append(createElement('p', 'empty-state', config.ui.noChannels))
+    main.append(rewardPanel)
   }
-  main.append(section)
-  if (options.commentsVisible) main.append(renderComments(config))
   if (analyticsActive) main.append(renderPrivacy(config))
   app.replaceChildren(main)
 }
@@ -270,6 +350,7 @@ function renderFatalError(message: string, locale: SupportedLocale): void {
 /** 加载双语配置并启动页面，任何异常都不会阻断静态错误态，喵~ */
 function start(): void {
   let currentLocale = detectLocale('zh-CN')
+  let currentTab: PageTab = 'reward'
   try {
     const config = loadAppConfig()
     currentLocale = detectLocale(config.defaultLocale)
@@ -277,6 +358,10 @@ function start(): void {
     const initialResolvedConfig = resolveAppConfig(config, currentLocale)
     syncRuntimeMetadata(initialResolvedConfig, currentLocale)
     const analyticsActive = initializeAnalytics()
+
+    const changeTab = (nextTab: PageTab): void => {
+      currentTab = nextTab
+    }
 
     const changeLocale = (nextLocale: SupportedLocale): void => {
       if (nextLocale === currentLocale) return
@@ -286,7 +371,7 @@ function start(): void {
       try {
         const resolvedConfig = resolveAppConfig(config, nextLocale)
         syncRuntimeMetadata(resolvedConfig, nextLocale)
-        renderPage(resolvedConfig, options, nextLocale, analyticsActive, changeLocale)
+        renderPage(resolvedConfig, options, nextLocale, currentTab, analyticsActive, changeLocale, changeTab)
         trackAnalyticsEvent('reward_language_change', {
           previous_language: previousLocale,
           content_language: nextLocale,
@@ -298,7 +383,7 @@ function start(): void {
     }
 
     try {
-      renderPage(initialResolvedConfig, options, currentLocale, analyticsActive, changeLocale)
+      renderPage(initialResolvedConfig, options, currentLocale, currentTab, analyticsActive, changeLocale, changeTab)
       trackAnalyticsEvent('reward_page_view', {
         display_mode: options.mode,
         intro_visible: options.introVisible,

@@ -21,7 +21,7 @@
 
 构建期校验仓库名符合 `owner/repo` 格式，并要求标签为非空字符串。评论标题、GitHub 登录与公开性说明、加载状态和失败文案分别在 `zh-CN` 与 `en` 的 `ui` 中维护。
 
-URL 参数 `comments=1|0` 控制展示：
+URL 参数 `comments=1|0` 控制留言 Tab 入口：
 
 - `full` 模式默认开启，`comments=0` 可关闭。
 - `embed` 模式默认关闭，`comments=1` 可开启。
@@ -31,9 +31,9 @@ utterances 固定使用 `issue-term="pathname"`。查询参数和语言选择不
 
 ## 渲染、性能与失败边界
 
-评论区位于赞赏渠道之后、GA 隐私说明之前。独立加载模块负责创建 `https://utteranc.es/client.js` 异步脚本，并设置公开仓库、`comments` 标签、`pathname` 映射、`github-light` 主题及匿名跨域属性。
+页面在评论功能启用时展示“赞赏 / 留言”双 Tab，并默认停留在赞赏面板。留言面板首次激活时，独立加载模块才创建 `https://utteranc.es/client.js` 异步脚本，并设置公开仓库、`comments` 标签、`pathname` 映射、`github-light` 主题及匿名跨域属性；切回赞赏只隐藏留言面板，不销毁已经加载的 widget。
 
-utterances 创建的评论 iframe 自带懒加载。语言切换时页面重新创建评论外层和 widget，Issue 映射保持不变，授权会话仍由 utterances 管理。utterances 内部编辑器当前为英文，本站只本地化外层界面。
+语言切换会保留当前 Tab；若当前为留言，页面使用新语言重新创建评论外层和 widget，Issue 映射保持不变，授权会话仍由 utterances 管理。utterances 内部编辑器当前为英文，本站只本地化 Tab、标题和外层界面。
 
 脚本网络失败时，评论区显示本地化错误态并移除失败脚本，赞赏渠道继续可用。评论内容增减会改变文档高度，现有 `ResizeObserver` 会继续向外层宿主页发送 `appreciation-page:resize` 消息。
 
@@ -53,8 +53,9 @@ CSP 为 utterances 增加以下能力：
 
 ## 验收标准
 
-- full/embed 默认值与 `comments=1|0` 覆盖行为正确。
-- 中英文外层文案可以切换，任一时刻只有一个 utterances widget。
+- full/embed 的留言 Tab 默认值与 `comments=1|0` 覆盖行为正确。
+- 默认赞赏面板不加载第三方脚本，首次切到留言才创建 utterances widget。
+- Tab 支持点击和左右方向键，中英文切换保留当前 Tab，任一时刻只有一个 widget。
 - 不同查询参数与语言共享同一个 pathname Issue。
 - 第三方脚本失败不影响赞赏页主体。
 - GitHub OAuth 登录后可发表评论，自动创建的 Issue 带有 `comments` 标签。

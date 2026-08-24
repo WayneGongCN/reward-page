@@ -43,6 +43,9 @@ export interface UiConfig {
   copyAddress: string
   copySuccess: string
   copyFailure: string
+  pageTabsLabel: string
+  rewardTabLabel: string
+  commentsTabLabel: string
   commentsTitle: string
   commentsDescription: string
   commentsLoading: string
