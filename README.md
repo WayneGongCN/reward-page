@@ -142,7 +142,7 @@ BTC、USDT 与其他赞赏方式使用相同的二维码渠道模型，不引入
 
 1. 在 GitHub 仓库创建区分大小写的 `comments` 标签。
 2. 确认仓库为公开仓库且 Issues 已启用。
-3. 先将根目录的 `utterances.json` 合入默认分支；当前仅允许 `https://reward.waynegong.cn` 提交评论。
+3. 先将根目录的 `utterances.json` 合入默认分支；当前仅允许 `https://reward.waynegong.com` 提交评论。
 4. 安装 [utterances GitHub App](https://github.com/apps/utterances)，并仅授权 `WayneGongCN/reward-page`。
 
 评论者必须登录并授权 GitHub，首期不支持匿名评论。utterances 内部编辑器使用英文，本站只负责评论标题、公开性说明、加载状态和错误态的中英文切换。本地与 Vercel Preview 可以加载评论，但会因来源限制而无法提交。
@@ -240,7 +240,7 @@ Preview 与 Development 环境不要设置 `VITE_GA_MEASUREMENT_ID`；`VITE_TELE
 发布规则：
 
 - Pull Request：GitHub Actions 执行测试、类型检查和构建，Vercel 创建 Preview Deployment。
-- 推送 `main`：GitHub Actions 执行质量门禁，Vercel 自动创建 Production Deployment 并更新 `reward.waynegong.cn`。
+- 推送 `main`：GitHub Actions 执行质量门禁，Vercel 自动创建 Production Deployment 并更新 `reward.waynegong.com`。
 - 其他分支推送：Vercel 创建 Preview Deployment。
 
 GitHub Actions 与 Vercel Git 部署彼此独立触发；需要强制“质量门禁通过后才能生产部署”时，应启用 `main` 分支保护并要求“测试、类型检查与构建”检查通过后才能合并。
