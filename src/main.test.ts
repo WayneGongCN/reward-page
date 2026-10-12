@@ -24,14 +24,14 @@ function resetDocument(): void {
   document.documentElement.removeAttribute('data-mode')
   document.head.innerHTML = `
     <meta name="description" content="Initial description">
-    <link rel="canonical" href="https://reward.waynegong.cn/">
+    <link rel="canonical" href="https://reward.waynegong.com/">
     <meta property="og:title" content="Initial title">
     <meta property="og:description" content="Initial description">
-    <meta property="og:url" content="https://reward.waynegong.cn/">
-    <meta property="og:image" content="https://reward.waynegong.cn/share.png">
+    <meta property="og:url" content="https://reward.waynegong.com/">
+    <meta property="og:image" content="https://reward.waynegong.com/share.png">
     <meta name="twitter:title" content="Initial title">
     <meta name="twitter:description" content="Initial description">
-    <meta name="twitter:image" content="https://reward.waynegong.cn/share.png">
+    <meta name="twitter:image" content="https://reward.waynegong.com/share.png">
     <title>Initial title</title>
   `
   document.body.innerHTML = '<div id="app" aria-busy="true"></div>'

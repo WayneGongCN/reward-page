@@ -32,7 +32,7 @@ describe('第三方能力安全配置', () => {
 
   it('utterances 仅允许生产域名发评论', () => {
     const config = JSON.parse(readFileSync(new URL('../utterances.json', import.meta.url), 'utf8'))
-    expect(config).toEqual({ origins: ['https://reward.waynegong.cn'] })
+    expect(config).toEqual({ origins: ['https://reward.waynegong.com'] })
   })
 
   it('Base Pay 只增加官方状态查询域名且不放宽连接来源', () => {

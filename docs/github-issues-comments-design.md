@@ -47,7 +47,7 @@ CSP 为 utterances 增加以下能力：
 
 其他 CSP 指令保持不变。该内联样式放宽是直接在主页面集成官方脚本的已确认安全折中。
 
-根目录 `utterances.json` 仅允许 `https://reward.waynegong.cn` 提交评论。本地和 Vercel Preview 可以加载已有评论，但不能发评论。仓库必须保持公开并启用 Issues；需要预先创建 `comments` 标签，先将来源限制合入默认分支，再将 utterances GitHub App 仅授权给当前仓库。
+根目录 `utterances.json` 仅允许 `https://reward.waynegong.com` 提交评论。本地和 Vercel Preview 可以加载已有评论，但不能发评论。仓库必须保持公开并启用 Issues；需要预先创建 `comments` 标签，先将来源限制合入默认分支，再将 utterances GitHub App 仅授权给当前仓库。
 
 评论者必须登录 GitHub，评论和 GitHub 身份均公开。本站不保存 GitHub 令牌、OAuth Client Secret、评论正文或 Issue 编号。GA 的 `reward_page_view` 只增加匿名布尔字段 `comments_visible`。
 
